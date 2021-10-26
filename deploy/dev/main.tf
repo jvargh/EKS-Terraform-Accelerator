@@ -1,7 +1,6 @@
 
 terraform {
   required_version = ">= 0.14"
-
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -48,8 +47,8 @@ locals {
 
   # Enable=true Disable=false: EKS, VPC-E, EKS Managed Node Group as needed
   create_eks = true
-  create_vpc_endpoints = false
-  enable_managed_nodegroups = false  
+  create_vpc_endpoints = true
+  enable_managed_nodegroups = true  
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -80,23 +79,23 @@ module "aws_vpc" {
     "kubernetes.io/role/internal-elb"             = "1"
   }
 
-  manage_default_security_group = true
+  # manage_default_security_group = true
 
-  default_security_group_name = "${local.vpc_name}-endpoint-secgrp"
-  default_security_group_ingress = [
-  {
-      protocol    = -1
-      from_port   = 0
-      to_port     = 0
-      cidr_blocks = local.vpc_cidr
-  }]
-  default_security_group_egress = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = -1
-      cidr_blocks = "0.0.0.0/0"
-  }]
+  # default_security_group_name = "${local.vpc_name}-endpoint-secgrp"
+  # default_security_group_ingress = [
+  # {
+  #     protocol    = -1
+  #     from_port   = 0
+  #     to_port     = 0
+  #     cidr_blocks = local.vpc_cidr
+  # }]
+  # default_security_group_egress = [
+  #   {
+  #     from_port   = 0
+  #     to_port     = 0
+  #     protocol    = -1
+  #     cidr_blocks = "0.0.0.0/0"
+  # }]
 }
 
 #---------------------------------------------------------------
@@ -106,7 +105,7 @@ module "vpc_endpoint_gateway" {
   source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
   version = "v3.2.0"
 
-  create = local.create_vpc_endpoints == true ? 1 : 0
+  create = local.create_vpc_endpoints
   vpc_id = module.aws_vpc.vpc_id
 
   endpoints = {

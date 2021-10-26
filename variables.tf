@@ -78,12 +78,12 @@ variable "kubernetes_version" {
 }
 variable "cluster_endpoint_private_access" {
   type        = bool
-  default     = false
+  default     = true
   description = "Indicates whether or not the Amazon EKS private API server endpoint is enabled. Default to AWS EKS resource and it is false"
 }
 variable "cluster_endpoint_public_access" {
   type        = bool
-  default     = true
+  default     = false
   description = "Indicates whether or not the Amazon EKS public API server endpoint is enabled. Default to AWS EKS resource and it is true"
 }
 variable "enable_irsa" {
