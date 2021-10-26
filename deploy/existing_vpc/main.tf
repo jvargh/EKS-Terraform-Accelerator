@@ -38,10 +38,14 @@ locals {
   kubernetes_version = "1.21"
   tags = tomap({ "created-by" = local.terraform_version })
 
-  vpc_cidr     = "10.0.0.0/16"
+  vpc_cidr     = "172.31.0.0/16"
   vpc_name     = join("-", [local.tenant, local.environment, local.zone, "vpc"])
   cluster_name = join("-", [local.tenant, local.environment, local.zone, "eks"])
   aws_availability_zones = ["us-east-1a", "us-east-1b"]
+  
+  vpc_id                  = "vpc-096d1e797f3c5f224"
+  private_subnets         = ["subnet-0c0bb31845f63da42", "subnet-0bb37353ef29242d5"]
+  private_route_table_ids =  "rtb-0f5f80da90149b12b"
 
   terraform_version = "Terraform v0.14.11"
 
@@ -54,49 +58,49 @@ locals {
 # ---------------------------------------------------------------------------------------------------------------------
 # AWS VPC Module
 # ---------------------------------------------------------------------------------------------------------------------
-module "aws_vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "v3.2.0"
+# module "aws_vpc" {
+#   source  = "terraform-aws-modules/vpc/aws"
+#   version = "v3.2.0"
 
-  name = local.vpc_name
-  cidr = local.vpc_cidr
-  azs  = local.aws_availability_zones
+#   name = local.vpc_name
+#   cidr = local.vpc_cidr
+#   azs  = local.aws_availability_zones
 
-  # public_subnets  = [for k, v in data.aws_availability_zones.available.names : cidrsubnet(local.vpc_cidr, 8, k)]
-  private_subnets = [for k, v in local.aws_availability_zones : cidrsubnet(local.vpc_cidr, 8, k + 10)]
+#   # public_subnets  = [for k, v in data.aws_availability_zones.available.names : cidrsubnet(local.vpc_cidr, 8, k)]
+#   private_subnets = [for k, v in local.aws_availability_zones : cidrsubnet(local.vpc_cidr, 8, k + 10)]
 
-  enable_nat_gateway   = false
-  create_igw           = false
-  enable_dns_hostnames = true
+#   enable_nat_gateway   = false
+#   create_igw           = false
+#   enable_dns_hostnames = true
 
-  # public_subnet_tags = {
-  #   "kubernetes.io/cluster/${local.cluster_name}" = "shared"
-  #   "kubernetes.io/role/elb"                      = "1"
-  # }
+#   # public_subnet_tags = {
+#   #   "kubernetes.io/cluster/${local.cluster_name}" = "shared"
+#   #   "kubernetes.io/role/elb"                      = "1"
+#   # }
 
-  private_subnet_tags = {
-    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
-    "kubernetes.io/role/internal-elb"             = "1"
-  }
+#   private_subnet_tags = {
+#     "kubernetes.io/cluster/${local.cluster_name}" = "shared"
+#     "kubernetes.io/role/internal-elb"             = "1"
+#   }
 
-  # manage_default_security_group = true
+#   # manage_default_security_group = true
 
-  # default_security_group_name = "${local.vpc_name}-endpoint-secgrp"
-  # default_security_group_ingress = [
-  # {
-  #     protocol    = -1
-  #     from_port   = 0
-  #     to_port     = 0
-  #     cidr_blocks = local.vpc_cidr
-  # }]
-  # default_security_group_egress = [
-  #   {
-  #     from_port   = 0
-  #     to_port     = 0
-  #     protocol    = -1
-  #     cidr_blocks = "0.0.0.0/0"
-  # }]
-}
+#   # default_security_group_name = "${local.vpc_name}-endpoint-secgrp"
+#   # default_security_group_ingress = [
+#   # {
+#   #     protocol    = -1
+#   #     from_port   = 0
+#   #     to_port     = 0
+#   #     cidr_blocks = local.vpc_cidr
+#   # }]
+#   # default_security_group_egress = [
+#   #   {
+#   #     from_port   = 0
+#   #     to_port     = 0
+#   #     protocol    = -1
+#   #     cidr_blocks = "0.0.0.0/0"
+#   # }]
+# }
 
 #---------------------------------------------------------------
 # VPC Endpoint Gateway
@@ -106,15 +110,13 @@ module "vpc_endpoint_gateway" {
   version = "v3.2.0"
 
   create = local.create_vpc_endpoints
-  vpc_id = module.aws_vpc.vpc_id
+  vpc_id = local.vpc_id
 
   endpoints = {
     s3 = {
       service      = "s3"
       service_type = "Gateway"
-      route_table_ids = flatten([
-        module.aws_vpc.intra_route_table_ids,
-        module.aws_vpc.private_route_table_ids])
+      route_table_ids = [local.private_route_table_ids]
       tags = { Name = "S3-VPC-Gateway" }
     },
   }
@@ -122,9 +124,9 @@ module "vpc_endpoint_gateway" {
 
 resource "aws_security_group" "vpc_endpoints" {
   count = local.create_vpc_endpoints == true ? 1 : 0
-  name        = "vpc_endpoints_sg_${module.aws_vpc.vpc_id}"
-  description = "Security group for all VPC Endpoints in ${module.aws_vpc.vpc_id}"
-  vpc_id      = module.aws_vpc.vpc_id
+  name        = "vpc_endpoints_sg_${local.vpc_id}"
+  description = "Security group for all VPC Endpoints in ${local.vpc_id}"
+  vpc_id      = local.vpc_id
   egress {
     from_port   = 0
     to_port     = 0
@@ -155,9 +157,9 @@ module "vpc_endpoints_gateway" {
   source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
   version = "v3.2.0"
 
-  vpc_id             = module.aws_vpc.vpc_id
+  vpc_id             = local.vpc_id
   security_group_ids = aws_security_group.vpc_endpoints == 0? []: [aws_security_group.vpc_endpoints[0].id]
-  subnet_ids         = module.aws_vpc.private_subnets
+  subnet_ids         = local.private_subnets
 
   endpoints = {
     ssm = {
@@ -222,8 +224,8 @@ module "aws-eks-accelerator-for-terraform" {
   terraform_version = local.terraform_version
 
   # EKS Cluster VPC and Subnet mandatory config
-  vpc_id             = module.aws_vpc.vpc_id
-  private_subnet_ids = module.aws_vpc.private_subnets
+  vpc_id             = local.vpc_id
+  private_subnet_ids = local.private_subnets
 
   # EKS CONTROL PLANE VARIABLES
   create_eks         = local.create_eks
@@ -265,7 +267,8 @@ module "aws-eks-accelerator-for-terraform" {
       disk_size      = 50
 
       # 4> Node Group network configuration
-      subnet_ids = module.aws_vpc.private_subnets # Define your private/public subnets list with comma seprated subnet_ids  = ['subnet1','subnet2','subnet3']
+      # Define your private/public subnets list with comma seprated subnet_ids  = ['subnet1','subnet2','subnet3']      
+      subnet_ids = local.private_subnets 
 
       k8s_taints = []
 
