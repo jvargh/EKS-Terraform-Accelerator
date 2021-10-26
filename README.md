@@ -369,6 +369,7 @@ e.g. folder/file structure for defining multiple clusters
 │                   └── test
 │                       └── backend.conf
 │                       └── test.tfvars
+   
 ├── deploy\existing_vpc
 │                       └── backend.conf
 │                       └── dev.tfvars
