@@ -1,9 +1,11 @@
 # aws-eks-accelerator-for-terraform
 
 # Main Purpose
+
 This project provides a framework for deploying best-practice multi-tenant [EKS Clusters](https://aws.amazon.com/eks) with [Kubernetes Addons](https://kubernetes.io/docs/concepts/cluster-administration/addons/), provisioned via [Hashicorp Terraform](https://www.terraform.io/) and [Helm charts](https://helm.sh/) on [AWS](https://aws.amazon.com/).
 
 # Overview
+
 The AWS EKS Accelerator for Terraform module helps you to provision [EKS Clusters](https://aws.amazon.com/eks), [Managed node groups](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html) with [On-Demand](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-on-demand-instances.html) and [Spot Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html), [AWS Fargate profiles](https://docs.aws.amazon.com/eks/latest/userguide/fargate-profile.html), and all the necessary Kubernetes add-ons for a production-ready EKS cluster.
 The [Terraform Helm provider](https://github.com/hashicorp/terraform-provider-helm) is used to deploy common Kubernetes Addons with publicly available [Helm Charts](https://artifacthub.io/). This module also provides the integration for number AWS services like Amazon Managed Prometheus, EMR on EKS etc.
 This project leverages the community [terraform-aws-eks](https://github.com/terraform-aws-modules/terraform-aws-eks) modules to EKS Cluster.
@@ -13,12 +15,12 @@ The intention of this framework is to help design config driven solution. This w
 * `main.tf` - [EKS Cluster](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html) and [Amazon EKS Addon](https://docs.aws.amazon.com/eks/latest/userguide/eks-add-ons.html) resources.
 * `aws-eks-worker.tf`  - [Amazon Managed node groups](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html), [Self-managed nodes](https://docs.aws.amazon.com/eks/latest/userguide/worker.html), [AWS EKS Fargate profiles](https://docs.aws.amazon.com/eks/latest/userguide/fargate.html) resources
 * `kubernetes-addons.tf` - contains resources to deploy Kubernetes Addons using Helm and Kubernetes provider.
-
 * `modules` - folder contains AWS resource sub modules used in this module.
 * `kubernetes-addons` - folder contains Helm charts and Kubernetes resources for deploying Kubernetes Addons.
 * `deploy` - folder contains example to deploy EKS cluster with multiple node groups and Kubernetes add-ons
 
 # EKS Cluster Deployment Options
+
 This module provisions the following EKS resources
 
 ## EKS Cluster resources
@@ -61,6 +63,7 @@ Kubernetes Addons deployed using [Helm Charts](https://helm.sh/docs/topics/chart
 15. [spark-k8s-operator](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator)
 
 # Node Group Modules
+
 This module uses dedicated sub modules for creating [AWS Managed Node Groups](modules/aws-eks-managed-node-groups), [Self-managed Node groups](modules/aws-eks-self-managed-node-groups) and [Fargate profiles](modules/aws-eks-fargate-profiles).
 These modules provide flexibility to add or remove managed/self-managed node groups/fargate profiles by simply adding/removing map of values to input config. See [example](deploy/eks-cluster-with-new-vpc/main.tf).
 
@@ -68,6 +71,7 @@ The `aws-auth` ConfigMap handled by this module allow your nodes to join your cl
 Each Node Group can have dedicated IAM role, Launch template and Security Group to improve the security.
 
 Please refer this [full example](deploy/eks-cluster-with-new-vpc/main.tf)
+
 ### EKS Cluster Deployment Example
 
 ```hcl
@@ -252,12 +256,14 @@ Bottlerocket [Launch templates userdata](modules/aws-eks-managed-node-groups/tem
 Remote API access API via SSM agent. You can launch trouble shooting container via user data `[settings.host-containers.admin] enabled = true`.
 
 ### Features
+
 * [Secure](https://github.com/bottlerocket-os/bottlerocket/blob/develop/SECURITY_FEATURES.md) - Opinionated, specialized and highly secured
 * **Flexible** - Multi cloud and multi orchestrator
 * **Transactional** -  Image based upgraded and rollbacks
 * **Isolated** - Separate container Runtimes
 
 ### Updates
+
 Bottlerocket can be updated automatically via Kubernetes  Operator
 
 ```shell script
@@ -268,6 +274,7 @@ Bottlerocket can be updated automatically via Kubernetes  Operator
 # How to Deploy
 
 ## Prerequisites:
+
 Ensure that you have installed the following tools in your Mac or Windows Laptop before start working with this module and run Terraform Plan and Apply
 
 1. [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
@@ -276,6 +283,7 @@ Ensure that you have installed the following tools in your Mac or Windows Laptop
 4. [terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli)
 
 ## Deployment Steps
+
 The following steps walks you through the deployment of example [DEV cluster](deploy/eks-cluster-with-new-vpc/main.tf) configuration.
 This config deploys a private EKS cluster with public and private subnets.
 One managed node group and fargate profile for default namespace placed in private subnets. ALB placed in Public subnets created by AWS LB Ingress controller.
@@ -284,26 +292,29 @@ It also deploys few kubernetes apps i.e., AWS LB Ingress Controller, Metrics Ser
 #### Step1: Clone the repo
 
 ```shell script
-git clone https://github.com/aws-samples/aws-eks-accelerator-for-terraform.git
+git clone https://github.com/jvargh/eks-tf-accelerator-3.0.git
 ```
 
 #### Step2: (Optional) Update example [main.tf](deploy/eks-cluster-with-new-vpc/main.tf) file
 
-Update local variables `deploy/eks-cluster-with-new-vpc/main.tf` or keep it as default
+Update local variables `deploy/new_vpc/main.tf` or keep it as default
 You can choose to use an existing VPC ID and Subnet IDs or create a new VPC and subnets by providing CIDR ranges.
 
 #### Step3: Set AWS profile or Assume IAM role
+
 This role will become the Kubernetes Admin by default. Please see this document for [assuming a role](https://aws.amazon.com/premiumsupport/knowledge-center/iam-assume-role-cli/)
 
 #### Step4: Run Terraform INIT
+
 To initialize a working directory with configuration files
 
 ```shell script
-cd deploy/eks-cluster-with-new-vpc/
+cd deploy/new_vpc/
 terraform init
 ```
 
 #### Step5: Run Terraform PLAN
+
 To verify the resources created by this execution
 
 ```shell script
@@ -311,6 +322,7 @@ terraform plan
 ```
 
 #### Step6: Finally, Terraform APPLY
+
 to create resources
 
 ```shell script
@@ -318,6 +330,7 @@ terraform apply
 ```
 
 ### Configure kubectl and test cluster
+
 EKS Cluster details can be extracted from terraform output or from AWS Console to get the name of cluster.
 This following command used to update the `kubeconfig` in your local machine where you run kubectl commands to interact with your EKS Cluster.
 
@@ -325,16 +338,13 @@ This following command used to update the `kubeconfig` in your local machine whe
 
 `~/.kube/config` file gets updated with cluster details and certificate from the below command
 
-    $ aws eks --region <region> update-kubeconfig --name <cluster-name>
-
+$ aws eks --region <region> update-kubeconfig --name <cluster-name>
 #### Step8: List all the worker nodes by running the command below
 
-    $ kubectl get nodes
-
+$ kubectl get nodes
 #### Step9: List all the pods running in kube-system namespace
 
-    $ kubectl get pods -n kube-system
-
+$ kubectl get pods -n kube-system
 ## Advanced Deployment Folder Structure
 
 This example shows how to structure folders in your repo when you want to deploy multiple EKS Clusters across multiple regions and accounts.
@@ -350,70 +360,60 @@ Terraform backend configuration can be updated in `backend.conf` and cluster com
 
 e.g. folder/file structure for defining multiple clusters
 
-        ├── deploy\advanced
-        │   └── live
-        │       └── preprod
-        │           └── eu-west-1
-        │               └── application
-        │                   └── dev
-        │                       └── backend.conf
-        │                       └── dev.tfvars
-        │                       └── main.tf
-        │                       └── variables.tf
-        │                       └── outputs.tf
-        │                   └── test
-        │                       └── backend.conf
-        │                       └── test.tfvars
-        │       └── prod
-        │           └── eu-west-1
-        │               └── application
-        │                   └── prod
-        │                       └── backend.conf
-        │                       └── prod.tfvars
-        │                       └── main.tf
-        │                       └── variables.tf
-        │                       └── outputs.tf
-
+├── deploy\new_vpc
+│                       └── backend.conf
+│                       └── dev.tfvars
+│                       └── main.tf
+│                       └── variables.tf
+│                       └── outputs.tf
+│                   └── test
+│                       └── backend.conf
+│                       └── test.tfvars
+├── deploy\existing_vpc
+│                       └── backend.conf
+│                       └── dev.tfvars
+│                       └── main.tf
+│                       └── variables.tf
+│                       └── outputs.tf
 
 ## Important Note
+
 If you are using an existing VPC then you need to ensure that the following tags added to the VPC and subnet resources
 
 Add Tags to **VPC**
+
 ```hcl
     Key = "Kubernetes.io/cluster/${local.cluster_name}"
     Value = "Shared"
 ```
-
 Add Tags to **Public Subnets tagging** requirement
+
 ```hcl
     public_subnet_tags = {
       "Kubernetes.io/cluster/${local.cluster_name}" = "shared"
       "Kubernetes.io/role/elb"                      = "1"
     }
 ```
-
 Add Tags to **Private Subnets tagging** requirement
+
 ```hcl
     private_subnet_tags = {
       "Kubernetes.io/cluster/${local.cluster_name}" = "shared"
       "Kubernetes.io/role/internal-elb"             = "1"
     }
 ```
-
 For **fully Private EKS clusters** requires the following VPC endpoints to be created to communicate with AWS services.
 
-    com.amazonaws.region.aps-workspaces            - For AWS Managed Prometheus Workspace
-    com.amazonaws.region.ssm                       - Secrets Management
-    com.amazonaws.region.ec2
-    com.amazonaws.region.ecr.api
-    com.amazonaws.region.ecr.dkr
-    com.amazonaws.region.logs                       – For CloudWatch Logs
-    com.amazonaws.region.sts                        – If using AWS Fargate or IAM roles for service accounts
-    com.amazonaws.region.elasticloadbalancing       – If using Application Load Balancers
-    com.amazonaws.region.autoscaling                – If using Cluster Autoscaler
-    com.amazonaws.region.s3                         – Creates S3 gateway
-
-
+com.amazonaws.region.aps-workspaces            - For AWS Managed Prometheus Workspace
+com.amazonaws.region.ssm                       - Secrets Management
+com.amazonaws.region.ec2
+com.amazonaws.region.ecr.api
+com.amazonaws.region.ecr.dkr
+com.amazonaws.region.logs                       – For CloudWatch Logs
+com.amazonaws.region.sts                        – If using AWS Fargate or IAM roles for service accounts
+com.amazonaws.region.elasticloadbalancing       – If using Application Load Balancers
+com.amazonaws.region.autoscaling                – If using Cluster Autoscaler
+com.amazonaws.region.s3                         – Creates S3 gateway
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
