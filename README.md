@@ -361,21 +361,11 @@ Terraform backend configuration can be updated in `backend.conf` and cluster com
 e.g. folder/file structure for defining multiple clusters
 
 ├── deploy\new_vpc
-│                       └── backend.conf
-│                       └── dev.tfvars
-│                       └── main.tf
-│                       └── variables.tf
-│                       └── outputs.tf
-│                   └── test
-│                       └── backend.conf
-│                       └── test.tfvars
-   
+│      └── main.tf
+│      └── outputs.tf
 ├── deploy\existing_vpc
-│                       └── backend.conf
-│                       └── dev.tfvars
-│                       └── main.tf
-│                       └── variables.tf
-│                       └── outputs.tf
+│      └── main.tf
+│      └── outputs.tf
 
 ## Important Note
 
