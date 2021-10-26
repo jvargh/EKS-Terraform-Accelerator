@@ -1,6 +1,6 @@
 .terraform
 terraform.tfstate
-terraform.tfstate.backup
+terraform.tfstate.*
 .build
 .idea/
 .DS_Store
