@@ -31,32 +31,40 @@ terraform {
 
 data "aws_region" "current" {}
 
-data "aws_availability_zones" "available" {}
-
 locals {
   tenant      = "cust01"  # AWS account name or unique id for tenant
   environment = "preprod" # Environment area eg., preprod or prod
   zone        = "dev"     # Environment with in one sub_tenant or business unit
 
   kubernetes_version = "1.21"
+  tags = tomap({ "created-by" = local.terraform_version })
 
   vpc_cidr     = "10.0.0.0/16"
   vpc_name     = join("-", [local.tenant, local.environment, local.zone, "vpc"])
   cluster_name = join("-", [local.tenant, local.environment, local.zone, "eks"])
+  aws_availability_zones = ["us-east-1a", "us-east-1b"]
 
   terraform_version = "Terraform v0.14.11"
+
+  # Enable=true Disable=false: EKS, VPC-E, EKS Managed Node Group as needed
+  create_eks = true
+  create_vpc_endpoints = false
+  enable_managed_nodegroups = false  
 }
 
+# ---------------------------------------------------------------------------------------------------------------------
+# AWS VPC Module
+# ---------------------------------------------------------------------------------------------------------------------
 module "aws_vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "v3.2.0"
 
   name = local.vpc_name
   cidr = local.vpc_cidr
-  azs  = data.aws_availability_zones.available.names
+  azs  = local.aws_availability_zones
 
   # public_subnets  = [for k, v in data.aws_availability_zones.available.names : cidrsubnet(local.vpc_cidr, 8, k)]
-  private_subnets = [for k, v in data.aws_availability_zones.available.names : cidrsubnet(local.vpc_cidr, 8, k + 10)]
+  private_subnets = [for k, v in local.aws_availability_zones : cidrsubnet(local.vpc_cidr, 8, k + 10)]
 
   enable_nat_gateway   = false
   create_igw           = false
@@ -72,12 +80,142 @@ module "aws_vpc" {
     "kubernetes.io/role/internal-elb"             = "1"
   }
 
+  manage_default_security_group = true
+
+  default_security_group_name = "${local.vpc_name}-endpoint-secgrp"
+  default_security_group_ingress = [
+  {
+      protocol    = -1
+      from_port   = 0
+      to_port     = 0
+      cidr_blocks = local.vpc_cidr
+  }]
+  default_security_group_egress = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = -1
+      cidr_blocks = "0.0.0.0/0"
+  }]
 }
+
+#---------------------------------------------------------------
+# VPC Endpoint Gateway
+#---------------------------------------------------------------
+module "vpc_endpoint_gateway" {
+  source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
+  version = "v3.2.0"
+
+  create = local.create_vpc_endpoints == true ? 1 : 0
+  vpc_id = module.aws_vpc.vpc_id
+
+  endpoints = {
+    s3 = {
+      service      = "s3"
+      service_type = "Gateway"
+      route_table_ids = flatten([
+        module.aws_vpc.intra_route_table_ids,
+        module.aws_vpc.private_route_table_ids])
+      tags = { Name = "S3-VPC-Gateway" }
+    },
+  }
+}
+
+resource "aws_security_group" "vpc_endpoints" {
+  count = local.create_vpc_endpoints == true ? 1 : 0
+  name        = "vpc_endpoints_sg_${module.aws_vpc.vpc_id}"
+  description = "Security group for all VPC Endpoints in ${module.aws_vpc.vpc_id}"
+  vpc_id      = module.aws_vpc.vpc_id
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = merge(local.tags, {
+    Project  = "EKS"
+    Endpoint = "true"
+  })
+}
+
+resource "aws_security_group_rule" "ingress_vpc_endpoints_from_priv_cidr1" {
+  count                    = local.create_vpc_endpoints == true ? 1 : 0
+  description              = "Ingress from EKS Private Subnets to VPC Endpoint"
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.vpc_endpoints[0].id
+  cidr_blocks              = list(local.vpc_cidr)
+}
+
+module "vpc_endpoints_gateway" {
+  count = local.create_vpc_endpoints == true ? 1 : 0
+
+  depends_on = [aws_security_group.vpc_endpoints]
+  source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
+  version = "v3.2.0"
+
+  vpc_id             = module.aws_vpc.vpc_id
+  security_group_ids = aws_security_group.vpc_endpoints == 0? []: [aws_security_group.vpc_endpoints[0].id]
+  subnet_ids         = module.aws_vpc.private_subnets
+
+  endpoints = {
+    ssm = {
+      service             = "ssm"
+      private_dns_enabled = true
+    },
+    logs = {
+      service             = "logs"
+      private_dns_enabled = true
+    },
+    autoscaling = {
+      service             = "autoscaling"
+      private_dns_enabled = true
+    },
+    sts = {
+      service             = "sts"
+      private_dns_enabled = true
+    },
+    elasticloadbalancing = {
+      service             = "elasticloadbalancing"
+      private_dns_enabled = true
+    },
+    ec2 = {
+      service             = "ec2"
+      private_dns_enabled = true
+    },
+    ec2messages = {
+      service             = "ec2messages"
+      private_dns_enabled = true
+    },
+    ecr_api = {
+      service             = "ecr.api"
+      private_dns_enabled = true
+    },
+    ecr_dkr = {
+      service             = "ecr.dkr"
+      private_dns_enabled = true
+    },
+    kms = {
+      service             = "kms"
+      private_dns_enabled = true
+    },
+    ssmmessages = {
+      service             = "ssmmessages"
+      private_dns_enabled = true
+    },   
+  }
+  tags =  merge(local.tags, {
+    Project  = "EKS"
+    Endpoint = "true"
+  })
+}
+
 #---------------------------------------------------------------
 # Example to consume aws-eks-accelerator-for-terraform module
 #---------------------------------------------------------------
 module "aws-eks-accelerator-for-terraform" {
-  //  source = "git@github.com:aws-samples/aws-eks-accelerator-for-terraform.git"
   source            = "../../"
   tenant            = local.tenant
   environment       = local.environment
@@ -89,7 +227,7 @@ module "aws-eks-accelerator-for-terraform" {
   private_subnet_ids = module.aws_vpc.private_subnets
 
   # EKS CONTROL PLANE VARIABLES
-  create_eks         = true
+  create_eks         = local.create_eks
   kubernetes_version = local.kubernetes_version
 
   #---------------------------------------------------------#
@@ -100,7 +238,7 @@ module "aws-eks-accelerator-for-terraform" {
   #    3. Security Group for Node group (Optional)
   #    4. Launch Templates for Node group   (Optional)
   #---------------------------------------------------------#
-  enable_managed_nodegroups = true
+  enable_managed_nodegroups = local.enable_managed_nodegroups
   managed_node_groups = {
     #---------------------------------------------------------#
     # ON-DEMAND Worker Group - Worker Group - 1
@@ -124,7 +262,7 @@ module "aws-eks-accelerator-for-terraform" {
       # 3> Node Group compute configuration
       ami_type       = "AL2_x86_64" # AL2_x86_64, AL2_x86_64_GPU, AL2_ARM_64, CUSTOM
       capacity_type  = "ON_DEMAND"  # ON_DEMAND or SPOT
-      instance_types = ["m4.large"] # List of instances used only for SPOT type
+      instance_types = ["t3.medium"] # List of instances used only for SPOT type
       disk_size      = 50
 
       # 4> Node Group network configuration
@@ -189,243 +327,16 @@ module "aws-eks-accelerator-for-terraform" {
         subnet_type = "private"
       }
 
-
       subnet_ids = [] # Define your private/public subnets list with comma seprated subnet_ids  = ['subnet1','subnet2','subnet3']
 
       create_worker_security_group = false # Creates a dedicated sec group for this Node Group
     },
-    /*
-    spot_m5 = {
-      # 1> Node Group configuration - Part1
-      node_group_name = "self-managed-spot"
-      create_launch_template = true
-      launch_template_os = "amazonlinux2eks"       # amazonlinux2eks  or bottlerocket or windows
-      custom_ami_id   = "ami-0dfaa019a300f219c" # Bring your own custom AMI generated by Packer/ImageBuilder/Puppet etc.
-      public_ip       = false                   # Enable only for public subnets
-      pre_userdata    = <<-EOT
-              yum install -y amazon-ssm-agent \
-              systemctl enable amazon-ssm-agent && systemctl start amazon-ssm-agent \
-          EOT
-
-      disk_size     = 20
-      instance_type = "m5.large"
-
-      desired_size = 2
-      max_size     = 10
-      min_size     = 2
-
-      capacity_type = "spot"
-
-      # Node Group network configuration
-
-      subnet_ids  = []        # Define your private/public subnets list with comma seprated subnet_ids  = ['subnet1','subnet2','subnet3']
-
-      k8s_taints = []
-      k8s_labels = {
-        Environment = "preprod"
-        Zone        = "dev"
-        WorkerType  = "SPOT"
-      }
-      additional_tags = {
-        ExtraTag    = "spot_nodes"
-        Name        = "spot"
-        subnet_type = "private"
-      }
-
-      create_worker_security_group = false
-    },
-
-    brkt_m5 = {
-      node_group_name = "self-managed-brkt"
-      create_launch_template = true
-      launch_template_os = "bottlerocket"          # amazonlinux2eks  or bottlerocket or windows
-      custom_ami_id   = "ami-044b114caf98ce8c5" # Bring your own custom AMI generated by Packer/ImageBuilder/Puppet etc.
-      public_ip       = false                   # Use this to enable public IP for EC2 instances; only for public subnets used in launch templates ;
-      pre_userdata    = ""
-
-      desired_size    = 3
-      max_size        = 3
-      min_size        = 3
-      max_unavailable = 1
-
-      instance_types = "m5.large"
-      disk_size      = 50
-
-
-      subnet_ids  = []        # Define your private/public subnets list with comma seprated subnet_ids  = ['subnet1','subnet2','subnet3']
-
-      k8s_taints = []
-
-      k8s_labels = {
-        Environment = "preprod"
-        Zone        = "dev"
-        OS          = "bottlerocket"
-        WorkerType  = "ON_DEMAND_BOTTLEROCKET"
-      }
-      additional_tags = {
-        ExtraTag = "bottlerocket"
-        Name     = "bottlerocket"
-      }
-
-      create_worker_security_group = true
-    }
-
-    #---------------------------------------------------------#
-    # ON-DEMAND Self Managed Windows Worker Node Group
-    #---------------------------------------------------------#
-    windows_od = {
-      node_group_name = "windows-ondemand"
-      create_launch_template = true
-      launch_template_os = "windows"          # amazonlinux2eks  or bottlerocket or windows
-      # custom_ami_id   = "ami-xxxxxxxxxxxxxxxx" # Bring your own custom AMI. Default Windows AMI is the latest EKS Optimized Windows Server 2019 English Core AMI.
-      public_ip = false # Enable only for public subnets
-
-      disk_size     = 50
-      instance_type = "m5n.large"
-
-      desired_size = 2
-      max_size     = 4
-      min_size     = 2
-
-      k8s_labels = {
-        Environment = "preprod"
-        Zone        = "dev"
-        WorkerType  = "WINDOWS_ON_DEMAND"
-      }
-
-      additional_tags = {
-        ExtraTag    = "windows-on-demand"
-        Name        = "windows-on-demand"
-
-      }
-
-      subnet_ids  = []        # Define your private/public subnets list with comma seprated subnet_ids  = ['subnet1','subnet2','subnet3']
-
-      create_worker_security_group = false # Creates a dedicated sec group for this Node Group
-    }
-  */
   } # END OF SELF MANAGED NODE GROUPS
-
-  #---------------------------------------------------------#
-  # FARGATE PROFILES
-  #---------------------------------------------------------#
-  enable_fargate = false
-
-  fargate_profiles = {
-    default = {
-      fargate_profile_name = "default"
-      fargate_profile_namespaces = [{
-        namespace = "default"
-        k8s_labels = {
-          Environment = "preprod"
-          Zone        = "dev"
-          env         = "fargate"
-        }
-      }]
-
-      subnet_ids = [] # Provide list of private subnets
-
-      additional_tags = {
-        ExtraTag = "Fargate"
-      }
-    },
-    /*
-    multi = {
-      fargate_profile_name = "multi-namespaces"
-      fargate_profile_namespaces = [{
-        namespace = "default"
-        k8s_labels = {
-          Environment = "preprod"
-          Zone        = "dev"
-          OS          = "Fargate"
-          WorkerType  = "FARGATE"
-          Namespace   = "default"
-        }
-        },
-        {
-          namespace = "sales"
-          k8s_labels = {
-            Environment = "preprod"
-            Zone        = "dev"
-            OS          = "Fargate"
-            WorkerType  = "FARGATE"
-            Namespace   = "default"
-          }
-      }]
-
-      subnet_ids = [] # Provide list of private subnets
-
-      additional_tags = {
-        ExtraTag = "Fargate"
-      }
-    }, */
-  } # END OF FARGATE PROFILES
-
-  #---------------------------------------
-  # FARGATE FLUENTBIT
-  #---------------------------------------
-  fargate_fluentbit_enable = false
-
-  fargate_fluentbit_config = {
-    output_conf  = <<EOF
-[OUTPUT]
-  Name cloudwatch_logs
-  Match *
-  region eu-west-1
-  log_group_name /${local.cluster_name}/fargate-fluentbit-logs
-  log_stream_prefix "fargate-logs-"
-  auto_create_group true
-    EOF
-    filters_conf = <<EOF
-[FILTER]
-  Name parser
-  Match *
-  Key_Name log
-  Parser regex
-  Preserve_Key On
-  Reserve_Data On
-    EOF
-    parsers_conf = <<EOF
-[PARSER]
-  Name regex
-  Format regex
-  Regex ^(?<time>[^ ]+) (?<stream>[^ ]+) (?<logtag>[^ ]+) (?<message>.+)$
-  Time_Key time
-  Time_Format %Y-%m-%dT%H:%M:%S.%L%z
-  Time_Keep On
-  Decode_Field_As json message
-    EOF
-  }
-
-  #---------------------------------------
-  # TRAEFIK INGRESS CONTROLLER HELM ADDON
-  #---------------------------------------
-  traefik_ingress_controller_enable = false
-
-  # Optional Map value
-  traefik_helm_chart = {
-    name       = "traefik"                         # (Required) Release name.
-    repository = "https://helm.traefik.io/traefik" # (Optional) Repository URL where to locate the requested chart.
-    chart      = "traefik"                         # (Required) Chart name to be installed.
-    version    = "10.0.0"                          # (Optional) Specify the exact chart version to install. If this is not specified, the latest version is installed.
-    namespace  = "kube-system"                     # (Optional) The namespace to install the release into. Defaults to default
-    timeout    = "1200"                            # (Optional)
-    lint       = "true"                            # (Optional)
-    # (Optional) Example to show how to override values using SET
-    set = [{
-      name  = "service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-type"
-      value = "nlb"
-    }]
-    # (Optional) Example to show how to pass metrics-server-values.yaml
-    values = [templatefile("${path.module}/k8s_addons/traefik-values.yaml", {
-      operating_system = "linux"
-    })]
-  }
 
   #---------------------------------------
   # METRICS SERVER HELM ADDON
   #---------------------------------------
-  metrics_server_enable = true
+  metrics_server_enable = false
 
   # Optional Map value
   metrics_server_helm_chart = {
@@ -446,7 +357,7 @@ module "aws-eks-accelerator-for-terraform" {
   #---------------------------------------
   # CLUSTER AUTOSCALER HELM ADDON
   #---------------------------------------
-  cluster_autoscaler_enable = true
+  cluster_autoscaler_enable = false
 
   # Optional Map value
   cluster_autoscaler_helm_chart = {
@@ -465,38 +376,6 @@ module "aws-eks-accelerator-for-terraform" {
   }
 
   #---------------------------------------
-  # AWS MANAGED PROMETHEUS ENABLE
-  #---------------------------------------
-  aws_managed_prometheus_enable         = false
-  aws_managed_prometheus_workspace_name = "aws-managed-prometheus-workspace" # Optional
-
-  #---------------------------------------
-  # COMMUNITY PROMETHEUS ENABLE
-  #---------------------------------------
-  prometheus_enable = false
-
-  # Optional Map value
-  prometheus_helm_chart = {
-    name       = "prometheus"                                         # (Required) Release name.
-    repository = "https://prometheus-community.github.io/helm-charts" # (Optional) Repository URL where to locate the requested chart.
-    chart      = "prometheus"                                         # (Required) Chart name to be installed.
-    version    = "14.4."                                              # (Optional) Specify the exact chart version to install. If this is not specified, the latest version is installed.
-    namespace  = "prometheus"                                         # (Optional) The namespace to install the release into. Defaults to default
-    values = [templatefile("${path.module}/k8s_addons/prometheus-values.yaml", {
-      operating_system = "linux"
-    })]
-
-  }
-
-  #---------------------------------------
-  # ENABLE EMR ON EKS
-  #---------------------------------------
-  enable_emr_on_eks        = false
-  emr_on_eks_username      = "emr-containers"
-  emr_on_eks_namespace     = "spark"
-  emr_on_eks_iam_role_name = "EMRonEKSExecution"
-
-  #---------------------------------------
   # ENABLE NGINX
   #---------------------------------------
 
@@ -509,42 +388,6 @@ module "aws-eks-accelerator-for-terraform" {
     version    = "3.33.0"
     namespace  = "kube-system"
     values     = [templatefile("${path.module}/k8s_addons/nginx-values.yaml", {})]
-  }
-
-  #---------------------------------------
-  # ENABLE AGONES
-  #---------------------------------------
-  # NOTE: Agones requires a Node group in Public Subnets and enable Public IP
-  agones_enable = false
-  # Optional  agones_helm_chart
-  agones_helm_chart = {
-    name               = "agones"
-    chart              = "agones"
-    repository         = "https://agones.dev/chart/stable"
-    version            = "1.15.0"
-    namespace          = "kube-system"
-    gameserver_minport = 7000 # required for sec group changes to worker nodes
-    gameserver_maxport = 8000 # required for sec group changes to worker nodes
-    values = [templatefile("${path.module}/k8s_addons/agones-values.yaml", {
-      expose_udp            = true
-      gameserver_namespaces = "{${join(",", ["default", "xbox-gameservers", "xbox-gameservers"])}}"
-      gameserver_minport    = 7000
-      gameserver_maxport    = 8000
-    })]
-  }
-
-  #---------------------------------------
-  # ENABLE AWS OPEN TELEMETRY
-  #---------------------------------------
-  aws_open_telemetry_enable = false
-  aws_open_telemetry_addon = {
-    aws_open_telemetry_namespace                        = "aws-otel-eks"
-    aws_open_telemetry_emitter_otel_resource_attributes = "service.namespace=AWSObservability,service.name=ADOTEmitService"
-    aws_open_telemetry_emitter_name                     = "trace-emitter"
-    aws_open_telemetry_emitter_image                    = "public.ecr.aws/g9c4k4i4/trace-emitter:1"
-    aws_open_telemetry_collector_image                  = "public.ecr.aws/aws-observability/aws-otel-collector:latest"
-    aws_open_telemetry_aws_region                       = "eu-west-1"
-    aws_open_telemetry_emitter_oltp_endpoint            = "localhost:55680"
   }
 
   #---------------------------------------
@@ -571,23 +414,6 @@ module "aws-eks-accelerator-for-terraform" {
         value = "linux"
       }
     ]
-  }
-  #---------------------------------------
-  # SPARK K8S OPERATOR HELM ADDON
-  #---------------------------------------
-  spark_on_k8s_operator_enable = false
-
-  # Optional Map value
-  spark_on_k8s_operator_helm_chart = {
-    name             = "spark-operator"
-    chart            = "spark-operator"
-    repository       = "https://googlecloudplatform.github.io/spark-on-k8s-operator"
-    version          = "1.1.6"
-    namespace        = "spark-k8s-operator"
-    timeout          = "1200"
-    create_namespace = true
-    values           = [templatefile("${path.module}/k8s_addons/spark-k8s-operator-values.yaml", {})]
-
   }
 
 }
