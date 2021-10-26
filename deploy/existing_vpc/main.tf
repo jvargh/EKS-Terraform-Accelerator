@@ -46,9 +46,9 @@ locals {
   terraform_version = "Terraform v0.14.11"
 
   # Enable=true Disable=false: EKS, VPC-E, EKS Managed Node Group as needed
-  create_eks = true
-  create_vpc_endpoints = true
-  enable_managed_nodegroups = true  
+  create_eks = false
+  create_vpc_endpoints = false
+  enable_managed_nodegroups = false
 }
 
 # ---------------------------------------------------------------------------------------------------------------------

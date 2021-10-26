@@ -1,12 +1,12 @@
-# terraform-aws-eks-accelerator-patterns
-
+# Application Account Dev Cluster Deployment
 The following steps walks you through the deployment of this example
 
 This example deploys the following Basic EKS Cluster with VPC
 
  - Creates a new sample VPC, 3 Private Subnets and 3 Public Subnets
  - Creates Internet gateway for Public Subnets and NAT Gateway for Private Subnets
- - Creates EKS Cluster Control plane with one managed node group and fargate profile
+ - Creates EKS Cluster Control plane with one managed node group, self managed and fargate profile
+ - Deploys all available Helm Addons
 
 # How to Deploy
 
@@ -30,7 +30,7 @@ git clone https://gitlab.aws.dev/vabonthu/terraform-aws-eks-accelerator-patterns
 to initialize a working directory with configuration files
 
 ```shell script
-cd deploy/eks-cluster-with-new-vpc
+cd deploy/advanced/live/preprod/eu-west-1/application_acct/dev
 terraform init
 ```
 
@@ -70,6 +70,6 @@ EKS Cluster details can be extracted from terraform output or from AWS Console t
 
 # How to Destroy
 ```shell script
-cd deploy/eks-cluster-with-new-vpc
+cd deploy/advanced/live/preprod/eu-west-1/application_acct/dev
 terraform destroy
 ```
