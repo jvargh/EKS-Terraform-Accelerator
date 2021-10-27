@@ -1,13 +1,14 @@
-# Existing VPC EKS Cluster Deployment
+# Existing VPC EKS Cluster Deployment in a Private EKS network
 
 The following steps walks you through the deployment of this example
 
-This example deploys the a Basic EKS Cluster with Managed Node group assuming following is available
+This example deploys a Basic EKS Cluster with Managed Node group with the following pre-requisites
 
-- Existing VPC CIDR ranged and VPC ID
+- Existing VPC CIDR and VPC ID
 - AWS Availability Zones
-- Existing Private Subnet IDs in the above AZs
+- Existing Private Subnet IDs from the above AZs
 - Private Route Table
+- Security Group ID of the Bastion or Cloud9 host
 
 # How to Deploy
 

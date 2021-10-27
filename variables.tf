@@ -101,6 +101,11 @@ variable "cluster_log_retention_period" {
   default     = 7
   description = "Number of days to retain cluster logs. Requires `enabled_cluster_log_types` to be set. See https://docs.aws.amazon.com/en_us/eks/latest/userguide/control-plane-logs.html."
 }
+variable "pc_security_group_id" {
+  type        = list(string)
+  default     = []
+  description = "pc_security_group_id to add to EKS cluster security_group"
+}
 #----------------------------------------------------------
 # EKS MANAGED ADDONS
 #----------------------------------------------------------

@@ -43,9 +43,15 @@ locals {
   cluster_name = join("-", [local.tenant, local.environment, local.zone, "eks"])
   aws_availability_zones = ["us-east-1a", "us-east-1b"]
 
+  # Bastion host or Cloud9 security group to get access to EKS Private API endpoint
+  pc_security_group_id    = ["sg-0f625e6d0296c7db3"]
+  
   terraform_version = "Terraform v0.14.11"
 
-  # Enable=true Disable=false: EKS, VPC-E, EKS Managed Node Group as needed
+  # Enable=true Disable=false: this creates/destroys EKS, VPC-E, EKS Managed Node Group as needed
+  # Setting create_eks=true creates new VPC. So create VPC Peering from calling VPC to new VPC, while EKS comes up
+  # Setting all to false should remove but if issue with auth remval, run below to remove this module and t apply again 
+  # t state rm module.aws-eks-accelerator-for-terraform.kubernetes_config_map.aws_auth[0]
   create_eks = false
   create_vpc_endpoints = false
   enable_managed_nodegroups = false
@@ -224,6 +230,7 @@ module "aws-eks-accelerator-for-terraform" {
   # EKS Cluster VPC and Subnet mandatory config
   vpc_id             = module.aws_vpc.vpc_id
   private_subnet_ids = module.aws_vpc.private_subnets
+  pc_security_group_id = local.pc_security_group_id  
 
   # EKS CONTROL PLANE VARIABLES
   create_eks         = local.create_eks

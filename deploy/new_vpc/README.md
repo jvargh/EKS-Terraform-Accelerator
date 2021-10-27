@@ -1,11 +1,12 @@
-# New VPC EKS Cluster Deployment
+# New VPC EKS Cluster Deployment in a Private EKS network
 
 The following steps walks you through the deployment of this example
 
-This example deploys the a Basic EKS Cluster with Managed Node group assuming following is available
+This example deploys a Basic EKS Cluster with Managed Node group  with the following pre-requisites
 
 - Existing VPC CIDR range and VPC ID
 - AWS Availability Zones
+- Security Group ID of the Bastion or Cloud9 host
 
 # How to Deploy
 
@@ -46,7 +47,7 @@ terraform plan
 
 #### Step4: Enable eks
 
-to create resources. Ensure adding Bastion or Cloud9 Security Group to EKS Cluster Security Group at this point
+to create resources. Peer Bastion or Cloud9 VPC to new VPC and add Security Group to EKS Cluster Security Group at this point
 
 ```shell
 create_eks = true

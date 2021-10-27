@@ -52,6 +52,10 @@ module "aws_eks" {
 
   cluster_endpoint_private_access = var.cluster_endpoint_private_access
   cluster_endpoint_public_access  = var.cluster_endpoint_public_access
+  
+  # PC security group needing access to EKS Private API server endpoint
+  cluster_create_endpoint_private_access_sg_rule = true
+  cluster_endpoint_private_access_sg = var.pc_security_group_id
 
   # IRSA
   enable_irsa            = var.enable_irsa
