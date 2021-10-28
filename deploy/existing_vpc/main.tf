@@ -38,17 +38,17 @@ locals {
   kubernetes_version = "1.21"
   tags = tomap({ "created-by" = local.terraform_version })
 
-  vpc_cidr     = "172.31.0.0/16"
+  vpc_cidr     = "insert here"
   vpc_name     = join("-", [local.tenant, local.environment, local.zone, "vpc"])
   cluster_name = join("-", [local.tenant, local.environment, local.zone, "eks"])
   aws_availability_zones = ["us-east-1a", "us-east-1b"]
   
-  vpc_id                  = "vpc-096d1e797f3c5f224"
-  private_subnets         = ["subnet-0c0bb31845f63da42", "subnet-0bb37353ef29242d5"]
-  private_route_table_ids = ["rtb-0f5f80da90149b12b"]
+  vpc_id                  = "insert here"
+  private_subnets         = ["insert here"]
+  private_route_table_ids = ["insert here"]
   
   # Bastion host or Cloud9 security group to get access to EKS Private API endpoint
-  pc_security_group_id    = ["sg-0f625e6d0296c7db3"]
+  pc_security_group_id    = ["insert here"]
 
   terraform_version = "Terraform v0.14.11"
 
