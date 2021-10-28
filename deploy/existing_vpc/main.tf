@@ -56,7 +56,7 @@ locals {
   # Setting create_eks=true creates new VPC. No VPC peering needed as all in same VPC. pc_sec_grpid will be added to cluster_sec_grp
   # Setting all to false should remove but if issue with auth remval, run below to remove this module and t apply again 
   #     t state rm module.aws-eks-accelerator-for-terraform.kubernetes_config_map.aws_auth[0]
-  create_eks = false
+  create_eks = false 
   create_vpc_endpoints = false
   enable_managed_nodegroups = false
 }
@@ -133,6 +133,13 @@ resource "aws_security_group" "vpc_endpoints" {
   name        = "vpc_endpoints_sg_${local.vpc_id}"
   description = "Security group for all VPC Endpoints in ${local.vpc_id}"
   vpc_id      = local.vpc_id
+  ingress {
+    description      = "Ingress from EKS Private Subnets to VPC Endpoint"
+    from_port        = 443
+    to_port          = 443
+    protocol         = "tcp"
+    cidr_blocks      = list(local.vpc_cidr)
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -143,17 +150,6 @@ resource "aws_security_group" "vpc_endpoints" {
     Project  = "EKS"
     Endpoint = "true"
   })
-}
-
-resource "aws_security_group_rule" "ingress_vpc_endpoints_from_priv_cidr1" {
-  count                    = local.create_vpc_endpoints == true ? 1 : 0
-  description              = "Ingress from EKS Private Subnets to VPC Endpoint"
-  type                     = "ingress"
-  from_port                = 443
-  to_port                  = 443
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.vpc_endpoints[0].id
-  cidr_blocks              = list(local.vpc_cidr)
 }
 
 module "vpc_endpoints_gateway" {

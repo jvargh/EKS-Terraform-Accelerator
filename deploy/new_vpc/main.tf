@@ -84,24 +84,6 @@ module "aws_vpc" {
     "kubernetes.io/cluster/${local.cluster_name}" = "shared"
     "kubernetes.io/role/internal-elb"             = "1"
   }
-
-  # manage_default_security_group = true
-
-  # default_security_group_name = "${local.vpc_name}-endpoint-secgrp"
-  # default_security_group_ingress = [
-  # {
-  #     protocol    = -1
-  #     from_port   = 0
-  #     to_port     = 0
-  #     cidr_blocks = local.vpc_cidr
-  # }]
-  # default_security_group_egress = [
-  #   {
-  #     from_port   = 0
-  #     to_port     = 0
-  #     protocol    = -1
-  #     cidr_blocks = "0.0.0.0/0"
-  # }]
 }
 
 #---------------------------------------------------------------
@@ -131,6 +113,13 @@ resource "aws_security_group" "vpc_endpoints" {
   name        = "vpc_endpoints_sg_${module.aws_vpc.vpc_id}"
   description = "Security group for all VPC Endpoints in ${module.aws_vpc.vpc_id}"
   vpc_id      = module.aws_vpc.vpc_id
+  ingress {
+    description      = "Ingress from EKS Private Subnets to VPC Endpoint"
+    from_port        = 443
+    to_port          = 443
+    protocol         = "tcp"
+    cidr_blocks      = list(local.vpc_cidr)
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -141,17 +130,6 @@ resource "aws_security_group" "vpc_endpoints" {
     Project  = "EKS"
     Endpoint = "true"
   })
-}
-
-resource "aws_security_group_rule" "ingress_vpc_endpoints_from_priv_cidr1" {
-  count                    = local.create_vpc_endpoints == true ? 1 : 0
-  description              = "Ingress from EKS Private Subnets to VPC Endpoint"
-  type                     = "ingress"
-  from_port                = 443
-  to_port                  = 443
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.vpc_endpoints[0].id
-  cidr_blocks              = list(local.vpc_cidr)
 }
 
 module "vpc_endpoints_gateway" {
