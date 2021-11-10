@@ -37,14 +37,15 @@ locals {
   kubernetes_version = "1.21"
   tags               = tomap({ "created-by" = local.terraform_version })
 
+  vpc_cidr               = "172.31.0.0/16"
   cluster_name           = join("-", [local.tenant, local.environment, local.zone, "eks"])
   aws_availability_zones = ["us-east-1a", "us-east-1b"]
 
-  vpc_id = "vpc-096d1e797f3c5f224"
-  # private_subnets         = ["subnet-0c0bb31845f63da42", "subnet-0bb37353ef29242d5"]
-  # private_route_table_ids = ["rtb-0f5f80da90149b12b"]
-  public_subnets         = ["subnet-043f96dabd9d75e29", "subnet-045b2813236f023b3"]
-  public_route_table_ids = ["rtb-042377d27c0071a0a"]
+  vpc_id                  = "vpc-096d1e797f3c5f224"
+  private_subnets         = ["subnet-0c0bb31845f63da42", "subnet-0bb37353ef29242d5"]
+  private_route_table_ids = ["rtb-0f5f80da90149b12b"]
+  # public_subnets         = ["subnet-043f96dabd9d75e29", "subnet-045b2813236f023b3"]
+  # public_route_table_ids = ["rtb-042377d27c0071a0a"]
 
   # Bastion host or Cloud9 security group to get access to EKS Private API endpoint
   pc_security_group_id = ["sg-0f625e6d0296c7db3"]
@@ -57,115 +58,8 @@ locals {
   #     t state rm module.aws-eks-accelerator-for-terraform.kubernetes_config_map.aws_auth[0]
   create_eks                = true
   create_vpc_endpoints      = false
-  enable_managed_nodegroups = true
+  enable_managed_nodegroups = false
 }
-
-# #---------------------------------------------------------------
-# # VPC Endpoint Gateway
-# #---------------------------------------------------------------
-# module "vpc_endpoint_gateway" {
-#   source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
-#   version = "v3.2.0"
-
-#   create = local.create_vpc_endpoints
-#   vpc_id = local.vpc_id
-
-#   endpoints = {
-#     s3 = {
-#       service      = "s3"
-#       service_type = "Gateway"
-#       route_table_ids = local.private_route_table_ids
-#       tags = { Name = "S3-VPC-Gateway" }
-#     },
-#   }
-# }
-
-# resource "aws_security_group" "vpc_endpoints" {
-#   count = local.create_vpc_endpoints == true ? 1 : 0
-#   name        = "vpc_endpoints_sg_${local.vpc_id}"
-#   description = "Security group for all VPC Endpoints in ${local.vpc_id}"
-#   vpc_id      = local.vpc_id
-#   ingress {
-#     description      = "Ingress from EKS Private Subnets to VPC Endpoint"
-#     from_port        = 443
-#     to_port          = 443
-#     protocol         = "tcp"
-#     cidr_blocks      = list(local.vpc_cidr)
-#   }
-#   egress {
-#     from_port   = 0
-#     to_port     = 0
-#     protocol    = "-1"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-#   tags = merge(local.tags, {
-#     Project  = "EKS"
-#     Endpoint = "true"
-#   })
-# }
-
-# module "vpc_endpoints_gateway" {
-#   count = local.create_vpc_endpoints == true ? 1 : 0
-
-#   depends_on = [aws_security_group.vpc_endpoints]
-#   source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
-#   version = "v3.2.0"
-
-#   vpc_id             = local.vpc_id
-#   security_group_ids = aws_security_group.vpc_endpoints == 0? []: [aws_security_group.vpc_endpoints[0].id]
-#   subnet_ids         = local.private_subnets
-
-#   endpoints = {
-#     ssm = {
-#       service             = "ssm"
-#       private_dns_enabled = true
-#     },
-#     logs = {
-#       service             = "logs"
-#       private_dns_enabled = true
-#     },
-#     autoscaling = {
-#       service             = "autoscaling"
-#       private_dns_enabled = true
-#     },
-#     sts = {
-#       service             = "sts"
-#       private_dns_enabled = true
-#     },
-#     elasticloadbalancing = {
-#       service             = "elasticloadbalancing"
-#       private_dns_enabled = true
-#     },
-#     ec2 = {
-#       service             = "ec2"
-#       private_dns_enabled = true
-#     },
-#     ec2messages = {
-#       service             = "ec2messages"
-#       private_dns_enabled = true
-#     },
-#     ecr_api = {
-#       service             = "ecr.api"
-#       private_dns_enabled = true
-#     },
-#     ecr_dkr = {
-#       service             = "ecr.dkr"
-#       private_dns_enabled = true
-#     },
-#     kms = {
-#       service             = "kms"
-#       private_dns_enabled = true
-#     },
-#     ssmmessages = {
-#       service             = "ssmmessages"
-#       private_dns_enabled = true
-#     },   
-#   }
-#   tags =  merge(local.tags, {
-#     Project  = "EKS"
-#     Endpoint = "true"
-#   })
-# }
 
 #---------------------------------------------------------------
 # Example to consume aws-eks-accelerator-for-terraform module
@@ -179,8 +73,8 @@ module "aws-eks-accelerator-for-terraform" {
 
   # EKS Cluster VPC and Subnet mandatory config
   vpc_id = local.vpc_id
-  # private_subnet_ids   = local.private_subnets
-  public_subnet_ids    = local.public_subnets
+  private_subnet_ids   = local.private_subnets
+  # public_subnet_ids    = local.public_subnets
   pc_security_group_id = local.pc_security_group_id
 
   # EKS CONTROL PLANE VARIABLES
@@ -205,7 +99,7 @@ module "aws-eks-accelerator-for-terraform" {
       node_group_name        = "managed-ondemand" # Max 40 characters for node group name
       create_launch_template = true               # false will use the default launch template
       launch_template_os     = "amazonlinux2eks"  # amazonlinux2eks or windows or bottlerocket
-      public_ip              = true               # Use this to enable public IP for EC2 instances; only for public subnets used in launch templates ;
+      public_ip              = false              # Use this to enable public IP for EC2 instances; only for public subnets used in launch templates ;
       pre_userdata           = <<-EOT
             yum install -y amazon-ssm-agent
             systemctl enable amazon-ssm-agent && systemctl start amazon-ssm-agent"
@@ -224,8 +118,8 @@ module "aws-eks-accelerator-for-terraform" {
 
       # 4> Node Group network configuration
       # Define your private/public subnets list with comma seprated subnet_ids  = ['subnet1','subnet2','subnet3']      
-      # subnet_ids = local.private_subnets 
-      subnet_ids = local.public_subnets
+      subnet_ids = local.private_subnets 
+      # subnet_ids = local.public_subnets
 
       k8s_taints = []
 
@@ -326,5 +220,111 @@ module "aws-eks-accelerator-for-terraform" {
       }
     ]
   }
+}
 
+#---------------------------------------------------------------
+# VPC Endpoint Gateway
+#---------------------------------------------------------------
+module "vpc_endpoint_gateway" {
+  source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
+  version = "v3.2.0"
+
+  create = local.create_vpc_endpoints
+  vpc_id = local.vpc_id
+
+  endpoints = {
+    s3 = {
+      service         = "s3"
+      service_type    = "Gateway"
+      route_table_ids = local.private_route_table_ids
+      tags            = { Name = "S3-VPC-Gateway" }
+    },
+  }
+}
+
+resource "aws_security_group" "vpc_endpoints" {
+  count       = local.create_vpc_endpoints == true ? 1 : 0
+  name        = "vpc_endpoints_sg_${local.vpc_id}"
+  description = "Security group for all VPC Endpoints in ${local.vpc_id}"
+  vpc_id      = local.vpc_id
+  ingress {
+    description = "Ingress from EKS Private Subnets to VPC Endpoint"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = list(local.vpc_cidr)
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = merge(local.tags, {
+    Project  = "EKS"
+    Endpoint = "true"
+  })
+}
+
+module "vpc_endpoints_gateway" {
+  count = local.create_vpc_endpoints == true ? 1 : 0
+
+  depends_on = [aws_security_group.vpc_endpoints]
+  source     = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
+  version    = "v3.2.0"
+
+  vpc_id             = local.vpc_id
+  security_group_ids = aws_security_group.vpc_endpoints == 0 ? [] : [aws_security_group.vpc_endpoints[0].id]
+  subnet_ids         = local.private_subnets
+
+  endpoints = {
+    ssm = {
+      service             = "ssm"
+      private_dns_enabled = true
+    },
+    logs = {
+      service             = "logs"
+      private_dns_enabled = true
+    },
+    autoscaling = {
+      service             = "autoscaling"
+      private_dns_enabled = true
+    },
+    sts = {
+      service             = "sts"
+      private_dns_enabled = true
+    },
+    elasticloadbalancing = {
+      service             = "elasticloadbalancing"
+      private_dns_enabled = true
+    },
+    ec2 = {
+      service             = "ec2"
+      private_dns_enabled = true
+    },
+    ec2messages = {
+      service             = "ec2messages"
+      private_dns_enabled = true
+    },
+    ecr_api = {
+      service             = "ecr.api"
+      private_dns_enabled = true
+    },
+    ecr_dkr = {
+      service             = "ecr.dkr"
+      private_dns_enabled = true
+    },
+    kms = {
+      service             = "kms"
+      private_dns_enabled = true
+    },
+    ssmmessages = {
+      service             = "ssmmessages"
+      private_dns_enabled = true
+    },
+  }
+  tags = merge(local.tags, {
+    Project  = "EKS"
+    Endpoint = "true"
+  })
 }

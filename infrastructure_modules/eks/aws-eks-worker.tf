@@ -35,7 +35,7 @@ module "aws_eks_managed_node_groups" {
   cluster_endpoint  = module.aws_eks.cluster_endpoint
 
   vpc_id             = var.vpc_id
-  private_subnet_ids = var.private_subnet_ids
+  # private_subnet_ids = var.private_subnet_ids
   public_subnet_ids  = var.public_subnet_ids
 
   worker_security_group_id          = module.aws_eks.worker_security_group_id
