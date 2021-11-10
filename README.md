@@ -1,4 +1,4 @@
-# aws-eks-accelerator-for-terraform
+# aws-eks-accelerator-for-terraform (restructure branch)
 
 # Main Purpose
 
@@ -339,12 +339,15 @@ This following command used to update the `kubeconfig` in your local machine whe
 `~/.kube/config` file gets updated with cluster details and certificate from the below command
 
 $ aws eks --region <region> update-kubeconfig --name <cluster-name>
+
 #### Step8: List all the worker nodes by running the command below
 
 $ kubectl get nodes
+
 #### Step9: List all the pods running in kube-system namespace
 
 $ kubectl get pods -n kube-system
+
 ## Advanced Deployment Folder Structure
 
 This example shows how to structure folders in your repo when you want to deploy multiple EKS Clusters across multiple regions and accounts.
@@ -377,6 +380,7 @@ Add Tags to **VPC**
     Key = "Kubernetes.io/cluster/${local.cluster_name}"
     Value = "Shared"
 ```
+
 Add Tags to **Public Subnets tagging** requirement
 
 ```hcl
@@ -385,6 +389,7 @@ Add Tags to **Public Subnets tagging** requirement
       "Kubernetes.io/role/elb"                      = "1"
     }
 ```
+
 Add Tags to **Private Subnets tagging** requirement
 
 ```hcl
@@ -393,6 +398,7 @@ Add Tags to **Private Subnets tagging** requirement
       "Kubernetes.io/role/internal-elb"             = "1"
     }
 ```
+
 For **fully Private EKS clusters** requires the following VPC endpoints to be created to communicate with AWS services.
 
 com.amazonaws.region.aps-workspaces            - For AWS Managed Prometheus Workspace
@@ -405,6 +411,7 @@ com.amazonaws.region.sts                        – If using AWS Fargate or IAM 
 com.amazonaws.region.elasticloadbalancing       – If using Application Load Balancers
 com.amazonaws.region.autoscaling                – If using Cluster Autoscaler
 com.amazonaws.region.s3                         – Creates S3 gateway
+
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
