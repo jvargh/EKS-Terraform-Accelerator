@@ -56,170 +56,9 @@ locals {
   # Setting create_eks=true creates new VPC. No VPC peering needed as all in same VPC. pc_sec_grpid will be added to cluster_sec_grp
   # Setting all to false should remove but if issue with auth remval, run below to remove this module and t apply again 
   #     t state rm module.aws-eks-accelerator-for-terraform.kubernetes_config_map.aws_auth[0]
-  create_eks                = true
+  create_eks                = false
   create_vpc_endpoints      = false
   enable_managed_nodegroups = false
-}
-
-#---------------------------------------------------------------
-# Example to consume aws-eks-accelerator-for-terraform module
-#---------------------------------------------------------------
-module "aws-eks-accelerator-for-terraform" {
-  source            = "../../infrastructure_modules/eks"
-  tenant            = local.tenant
-  environment       = local.environment
-  zone              = local.zone
-  terraform_version = local.terraform_version
-
-  # EKS Cluster VPC and Subnet mandatory config
-  vpc_id = local.vpc_id
-  private_subnet_ids   = local.private_subnets
-  # public_subnet_ids    = local.public_subnets
-  pc_security_group_id = local.pc_security_group_id
-
-  # EKS CONTROL PLANE VARIABLES
-  create_eks         = local.create_eks
-  kubernetes_version = local.kubernetes_version
-
-  #---------------------------------------------------------#
-  # EKS WORKER NODE GROUPS
-  # Define Node groups as map of maps object as shown below. Each node group creates the following
-  #    1. New node group
-  #    2. IAM role and policies for Node group
-  #    3. Security Group for Node group (Optional)
-  #    4. Launch Templates for Node group   (Optional)
-  #---------------------------------------------------------#
-  enable_managed_nodegroups = local.enable_managed_nodegroups
-  managed_node_groups = {
-    #---------------------------------------------------------#
-    # ON-DEMAND Worker Group - Worker Group - 1
-    #---------------------------------------------------------#
-    mg_4 = {
-      # 1> Node Group configuration - Part1
-      node_group_name        = "managed-ondemand" # Max 40 characters for node group name
-      create_launch_template = true               # false will use the default launch template
-      launch_template_os     = "amazonlinux2eks"  # amazonlinux2eks or windows or bottlerocket
-      public_ip              = false              # Use this to enable public IP for EC2 instances; only for public subnets used in launch templates ;
-      pre_userdata           = <<-EOT
-            yum install -y amazon-ssm-agent
-            systemctl enable amazon-ssm-agent && systemctl start amazon-ssm-agent"
-        EOT
-      # 2> Node Group scaling configuration
-      desired_size    = 1
-      max_size        = 1
-      min_size        = 1
-      max_unavailable = 1 # or percentage = 20
-
-      # 3> Node Group compute configuration
-      ami_type       = "AL2_x86_64"  # AL2_x86_64, AL2_x86_64_GPU, AL2_ARM_64, CUSTOM
-      capacity_type  = "ON_DEMAND"   # ON_DEMAND or SPOT
-      instance_types = ["t3.medium"] # List of instances used only for SPOT type
-      disk_size      = 50
-
-      # 4> Node Group network configuration
-      # Define your private/public subnets list with comma seprated subnet_ids  = ['subnet1','subnet2','subnet3']      
-      subnet_ids = local.private_subnets 
-      # subnet_ids = local.public_subnets
-
-      k8s_taints = []
-
-      k8s_labels = {
-        Environment = "preprod"
-        Zone        = "dev"
-        WorkerType  = "ON_DEMAND"
-      }
-      additional_tags = {
-        ExtraTag    = "m5x-on-demand"
-        Name        = "m5x-on-demand"
-        subnet_type = "private"
-      }
-
-      create_worker_security_group = false
-    },
-  } # END OF MANAGED NODE GROUPS
-
-
-  #---------------------------------------
-  # METRICS SERVER HELM ADDON
-  #---------------------------------------
-  metrics_server_enable = false
-
-  # Optional Map value
-  metrics_server_helm_chart = {
-    name       = "metrics-server"                                    # (Required) Release name.
-    repository = "https://kubernetes-sigs.github.io/metrics-server/" # (Optional) Repository URL where to locate the requested chart.
-    chart      = "metrics-server"                                    # (Required) Chart name to be installed.
-    version    = "3.5.0"                                             # (Optional) Specify the exact chart version to install. If this is not specified, the latest version is installed.
-    namespace  = "kube-system"                                       # (Optional) The namespace to install the release into. Defaults to default
-    timeout    = "1200"                                              # (Optional)
-    lint       = "true"                                              # (Optional)
-
-    # (Optional) Example to show how to pass metrics-server-values.yaml
-    values = [templatefile("${path.module}/k8s_addons/metrics-server-values.yaml", {
-      operating_system = "linux"
-    })]
-  }
-
-  #---------------------------------------
-  # CLUSTER AUTOSCALER HELM ADDON
-  #---------------------------------------
-  cluster_autoscaler_enable = false
-
-  # Optional Map value
-  cluster_autoscaler_helm_chart = {
-    name       = "cluster-autoscaler"                      # (Required) Release name.
-    repository = "https://kubernetes.github.io/autoscaler" # (Optional) Repository URL where to locate the requested chart.
-    chart      = "cluster-autoscaler"                      # (Required) Chart name to be installed.
-    version    = "9.10.7"                                  # (Optional) Specify the exact chart version to install. If this is not specified, the latest version is installed.
-    namespace  = "kube-system"                             # (Optional) The namespace to install the release into. Defaults to default
-    timeout    = "1200"                                    # (Optional)
-    lint       = "true"                                    # (Optional)
-
-    # (Optional) Example to show how to pass metrics-server-values.yaml
-    values = [templatefile("${path.module}/k8s_addons/cluster-autoscaler-vaues.yaml", {
-      operating_system = "linux"
-    })]
-  }
-
-  #---------------------------------------
-  # ENABLE NGINX
-  #---------------------------------------
-  nginx_ingress_controller_enable = false
-  # Optional nginx_helm_chart
-  nginx_helm_chart = {
-    name       = "ingress-nginx"
-    chart      = "ingress-nginx"
-    repository = "https://kubernetes.github.io/ingress-nginx"
-    version    = "3.33.0"
-    namespace  = "kube-system"
-    values     = [templatefile("${path.module}/k8s_addons/nginx-values.yaml", {})]
-  }
-
-  #---------------------------------------
-  # AWS-FOR-FLUENTBIT HELM ADDON
-  #---------------------------------------
-  aws_for_fluentbit_enable = false
-
-  aws_for_fluentbit_helm_chart = {
-    name                                      = "aws-for-fluent-bit"
-    chart                                     = "aws-for-fluent-bit"
-    repository                                = "https://aws.github.io/eks-charts"
-    version                                   = "0.1.0"
-    namespace                                 = "logging"
-    aws_for_fluent_bit_cw_log_group           = "/${local.cluster_name}/worker-fluentbit-logs" # Optional
-    aws_for_fluentbit_cwlog_retention_in_days = 90
-    create_namespace                          = true
-    values = [templatefile("${path.module}/k8s_addons/aws-for-fluentbit-values.yaml", {
-      region                          = data.aws_region.current.name,
-      aws_for_fluent_bit_cw_log_group = "/${local.cluster_name}/worker-fluentbit-logs"
-    })]
-    set = [
-      {
-        name  = "nodeSelector.kubernetes\\.io/os"
-        value = "linux"
-      }
-    ]
-  }
 }
 
 #---------------------------------------------------------------
@@ -328,3 +167,165 @@ module "vpc_endpoints_gateway" {
     Endpoint = "true"
   })
 }
+
+
+#---------------------------------------------------------------
+# Example to consume aws-eks-accelerator-for-terraform module
+#---------------------------------------------------------------
+module "aws-eks-accelerator-for-terraform" {
+  source            = "../../infrastructure_modules/eks"
+  tenant            = local.tenant
+  environment       = local.environment
+  zone              = local.zone
+  terraform_version = local.terraform_version
+
+  # EKS Cluster VPC and Subnet mandatory config
+  vpc_id = local.vpc_id
+  private_subnet_ids   = local.private_subnets
+  pc_security_group_id = local.pc_security_group_id
+
+  # EKS CONTROL PLANE VARIABLES
+  create_eks         = local.create_eks
+  kubernetes_version = local.kubernetes_version
+
+  #---------------------------------------------------------#
+  # EKS WORKER NODE GROUPS
+  # Define Node groups as map of maps object as shown below. Each node group creates the following
+  #    1. New node group
+  #    2. IAM role and policies for Node group
+  #    3. Security Group for Node group (Optional)
+  #    4. Launch Templates for Node group   (Optional)
+  #---------------------------------------------------------#
+  enable_managed_nodegroups = local.enable_managed_nodegroups 
+  managed_node_groups = {
+    #---------------------------------------------------------#
+    # ON-DEMAND Worker Group - Worker Group - 1
+    #---------------------------------------------------------#
+    mg_4 = {
+      # 1> Node Group configuration - Part1
+      node_group_name        = "managed-ondemand" # Max 40 characters for node group name
+      create_launch_template = true               # false will use the default launch template
+      launch_template_os     = "amazonlinux2eks"  # amazonlinux2eks or windows or bottlerocket
+      public_ip              = false              # Use this to enable public IP for EC2 instances; only for public subnets used in launch templates ;
+      pre_userdata           = <<-EOT
+            yum install -y amazon-ssm-agent
+            systemctl enable amazon-ssm-agent && systemctl start amazon-ssm-agent"
+        EOT
+      # 2> Node Group scaling configuration
+      desired_size    = 1
+      max_size        = 1
+      min_size        = 1
+      max_unavailable = 1 # or percentage = 20
+
+      # 3> Node Group compute configuration
+      ami_type       = "AL2_x86_64"  # AL2_x86_64, AL2_x86_64_GPU, AL2_ARM_64, CUSTOM
+      capacity_type  = "ON_DEMAND"   # ON_DEMAND or SPOT
+      instance_types = ["t3.medium"] # List of instances used only for SPOT type
+      disk_size      = 50
+
+      # 4> Node Group network configuration
+      # Define your private/public subnets list with comma seprated subnet_ids  = ['subnet1','subnet2','subnet3']      
+      subnet_ids = local.private_subnets 
+      # subnet_ids = local.public_subnets
+
+      k8s_taints = []
+
+      k8s_labels = {
+        Environment = "preprod"
+        Zone        = "dev"
+        WorkerType  = "ON_DEMAND"
+      }
+      additional_tags = {
+        ExtraTag    = "m5x-on-demand"
+        Name        = "m5x-on-demand"
+        subnet_type = "private"
+      }
+
+      create_worker_security_group = false
+    },
+  } # END OF MANAGED NODE GROUPS
+
+
+  #---------------------------------------
+  # METRICS SERVER HELM ADDON
+  #---------------------------------------
+  metrics_server_enable = false
+
+  # Optional Map value
+  metrics_server_helm_chart = {
+    name       = "metrics-server"                                    # (Required) Release name.
+    repository = "https://kubernetes-sigs.github.io/metrics-server/" # (Optional) Repository URL where to locate the requested chart.
+    chart      = "metrics-server"                                    # (Required) Chart name to be installed.
+    version    = "3.5.0"                                             # (Optional) Specify the exact chart version to install. If this is not specified, the latest version is installed.
+    namespace  = "kube-system"                                       # (Optional) The namespace to install the release into. Defaults to default
+    timeout    = "1200"                                              # (Optional)
+    lint       = "true"                                              # (Optional)
+
+    # (Optional) Example to show how to pass metrics-server-values.yaml
+    values = [templatefile("${path.module}/k8s_addons/metrics-server-values.yaml", {
+      operating_system = "linux"
+    })]
+  }
+
+    #---------------------------------------
+    # CLUSTER AUTOSCALER HELM ADDON
+    #---------------------------------------
+    cluster_autoscaler_enable = false
+  
+    # Optional Map value
+    cluster_autoscaler_helm_chart = {
+      name       = "cluster-autoscaler"                      # (Required) Release name.
+      repository = "https://kubernetes.github.io/autoscaler" # (Optional) Repository URL where to locate the requested chart.
+      chart      = "cluster-autoscaler"                      # (Required) Chart name to be installed.
+      version    = "9.10.7"                                  # (Optional) Specify the exact chart version to install. If this is not specified, the latest version is installed.
+      namespace  = "kube-system"                             # (Optional) The namespace to install the release into. Defaults to default
+      timeout    = "1200"                                    # (Optional)
+      lint       = "true"                                    # (Optional)
+  
+      # (Optional) Example to show how to pass metrics-server-values.yaml
+      values = [templatefile("${path.module}/k8s_addons/cluster-autoscaler-vaues.yaml", {
+        operating_system = "linux"
+      })]
+    }
+  
+    #---------------------------------------
+    # ENABLE NGINX
+    #---------------------------------------
+    nginx_ingress_controller_enable = false
+    # Optional nginx_helm_chart
+    nginx_helm_chart = {
+      name       = "ingress-nginx"
+      chart      = "ingress-nginx"
+      repository = "https://kubernetes.github.io/ingress-nginx"
+      version    = "3.33.0"
+      namespace  = "kube-system"
+      values     = [templatefile("${path.module}/k8s_addons/nginx-values.yaml", {})]
+    }
+  
+    #---------------------------------------
+    # AWS-FOR-FLUENTBIT HELM ADDON
+    #---------------------------------------
+    aws_for_fluentbit_enable = false
+  
+    aws_for_fluentbit_helm_chart = {
+      name                                      = "aws-for-fluent-bit"
+      chart                                     = "aws-for-fluent-bit"
+      repository                                = "https://aws.github.io/eks-charts"
+      version                                   = "0.1.0"
+      namespace                                 = "logging"
+      aws_for_fluent_bit_cw_log_group           = "/${local.cluster_name}/worker-fluentbit-logs" # Optional
+      aws_for_fluentbit_cwlog_retention_in_days = 90
+      create_namespace                          = true
+      values = [templatefile("${path.module}/k8s_addons/aws-for-fluentbit-values.yaml", {
+        region                          = data.aws_region.current.name,
+        aws_for_fluent_bit_cw_log_group = "/${local.cluster_name}/worker-fluentbit-logs"
+      })]
+      set = [
+        {
+          name  = "nodeSelector.kubernetes\\.io/os"
+          value = "linux"
+        }
+      ]
+    }
+  }
+
