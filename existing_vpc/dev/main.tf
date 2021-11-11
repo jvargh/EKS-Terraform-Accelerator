@@ -56,9 +56,9 @@ locals {
   # Setting create_eks=true creates new VPC. No VPC peering needed as all in same VPC. pc_sec_grpid will be added to cluster_sec_grp
   # Setting all to false should remove but if issue with auth remval, run below to remove this module and t apply again 
   #     t state rm module.aws-eks-accelerator-for-terraform.kubernetes_config_map.aws_auth[0]
-  create_eks                = false
-  create_vpc_endpoints      = false
-  enable_managed_nodegroups = false
+  create_eks                = true
+  create_vpc_endpoints      = true
+  enable_managed_nodegroups = true
 }
 
 #---------------------------------------------------------------
