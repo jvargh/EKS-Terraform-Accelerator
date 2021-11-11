@@ -57,8 +57,8 @@ locals {
   # Setting all to false should remove but if issue with auth remval, run below to remove this module and t apply again 
   #     t state rm module.aws-eks-accelerator-for-terraform.kubernetes_config_map.aws_auth[0]
   create_eks                = true
-  create_vpc_endpoints      = true
-  enable_managed_nodegroups = true
+  create_vpc_endpoints      = false
+  enable_managed_nodegroups = false
 }
 
 #---------------------------------------------------------------
@@ -180,7 +180,7 @@ module "aws-eks-accelerator-for-terraform" {
   terraform_version = local.terraform_version
 
   # EKS Cluster VPC and Subnet mandatory config
-  vpc_id = local.vpc_id
+  vpc_id               = local.vpc_id
   private_subnet_ids   = local.private_subnets
   pc_security_group_id = local.pc_security_group_id
 
@@ -196,7 +196,7 @@ module "aws-eks-accelerator-for-terraform" {
   #    3. Security Group for Node group (Optional)
   #    4. Launch Templates for Node group   (Optional)
   #---------------------------------------------------------#
-  enable_managed_nodegroups = local.enable_managed_nodegroups 
+  enable_managed_nodegroups = local.enable_managed_nodegroups
   managed_node_groups = {
     #---------------------------------------------------------#
     # ON-DEMAND Worker Group - Worker Group - 1
@@ -225,7 +225,7 @@ module "aws-eks-accelerator-for-terraform" {
 
       # 4> Node Group network configuration
       # Define your private/public subnets list with comma seprated subnet_ids  = ['subnet1','subnet2','subnet3']      
-      subnet_ids = local.private_subnets 
+      subnet_ids = local.private_subnets
       # subnet_ids = local.public_subnets
 
       k8s_taints = []
@@ -267,65 +267,65 @@ module "aws-eks-accelerator-for-terraform" {
     })]
   }
 
-    #---------------------------------------
-    # CLUSTER AUTOSCALER HELM ADDON
-    #---------------------------------------
-    cluster_autoscaler_enable = false
-  
-    # Optional Map value
-    cluster_autoscaler_helm_chart = {
-      name       = "cluster-autoscaler"                      # (Required) Release name.
-      repository = "https://kubernetes.github.io/autoscaler" # (Optional) Repository URL where to locate the requested chart.
-      chart      = "cluster-autoscaler"                      # (Required) Chart name to be installed.
-      version    = "9.10.7"                                  # (Optional) Specify the exact chart version to install. If this is not specified, the latest version is installed.
-      namespace  = "kube-system"                             # (Optional) The namespace to install the release into. Defaults to default
-      timeout    = "1200"                                    # (Optional)
-      lint       = "true"                                    # (Optional)
-  
-      # (Optional) Example to show how to pass metrics-server-values.yaml
-      values = [templatefile("${path.module}/k8s_addons/cluster-autoscaler-vaues.yaml", {
-        operating_system = "linux"
-      })]
-    }
-  
-    #---------------------------------------
-    # ENABLE NGINX
-    #---------------------------------------
-    nginx_ingress_controller_enable = false
-    # Optional nginx_helm_chart
-    nginx_helm_chart = {
-      name       = "ingress-nginx"
-      chart      = "ingress-nginx"
-      repository = "https://kubernetes.github.io/ingress-nginx"
-      version    = "3.33.0"
-      namespace  = "kube-system"
-      values     = [templatefile("${path.module}/k8s_addons/nginx-values.yaml", {})]
-    }
-  
-    #---------------------------------------
-    # AWS-FOR-FLUENTBIT HELM ADDON
-    #---------------------------------------
-    aws_for_fluentbit_enable = false
-  
-    aws_for_fluentbit_helm_chart = {
-      name                                      = "aws-for-fluent-bit"
-      chart                                     = "aws-for-fluent-bit"
-      repository                                = "https://aws.github.io/eks-charts"
-      version                                   = "0.1.0"
-      namespace                                 = "logging"
-      aws_for_fluent_bit_cw_log_group           = "/${local.cluster_name}/worker-fluentbit-logs" # Optional
-      aws_for_fluentbit_cwlog_retention_in_days = 90
-      create_namespace                          = true
-      values = [templatefile("${path.module}/k8s_addons/aws-for-fluentbit-values.yaml", {
-        region                          = data.aws_region.current.name,
-        aws_for_fluent_bit_cw_log_group = "/${local.cluster_name}/worker-fluentbit-logs"
-      })]
-      set = [
-        {
-          name  = "nodeSelector.kubernetes\\.io/os"
-          value = "linux"
-        }
-      ]
-    }
+  #---------------------------------------
+  # CLUSTER AUTOSCALER HELM ADDON
+  #---------------------------------------
+  cluster_autoscaler_enable = false
+
+  # Optional Map value
+  cluster_autoscaler_helm_chart = {
+    name       = "cluster-autoscaler"                      # (Required) Release name.
+    repository = "https://kubernetes.github.io/autoscaler" # (Optional) Repository URL where to locate the requested chart.
+    chart      = "cluster-autoscaler"                      # (Required) Chart name to be installed.
+    version    = "9.10.7"                                  # (Optional) Specify the exact chart version to install. If this is not specified, the latest version is installed.
+    namespace  = "kube-system"                             # (Optional) The namespace to install the release into. Defaults to default
+    timeout    = "1200"                                    # (Optional)
+    lint       = "true"                                    # (Optional)
+
+    # (Optional) Example to show how to pass metrics-server-values.yaml
+    values = [templatefile("${path.module}/k8s_addons/cluster-autoscaler-vaues.yaml", {
+      operating_system = "linux"
+    })]
   }
+
+  #---------------------------------------
+  # ENABLE NGINX
+  #---------------------------------------
+  nginx_ingress_controller_enable = false
+  # Optional nginx_helm_chart
+  nginx_helm_chart = {
+    name       = "ingress-nginx"
+    chart      = "ingress-nginx"
+    repository = "https://kubernetes.github.io/ingress-nginx"
+    version    = "3.33.0"
+    namespace  = "kube-system"
+    values     = [templatefile("${path.module}/k8s_addons/nginx-values.yaml", {})]
+  }
+
+  #---------------------------------------
+  # AWS-FOR-FLUENTBIT HELM ADDON
+  #---------------------------------------
+  aws_for_fluentbit_enable = false
+
+  aws_for_fluentbit_helm_chart = {
+    name                                      = "aws-for-fluent-bit"
+    chart                                     = "aws-for-fluent-bit"
+    repository                                = "https://aws.github.io/eks-charts"
+    version                                   = "0.1.0"
+    namespace                                 = "logging"
+    aws_for_fluent_bit_cw_log_group           = "/${local.cluster_name}/worker-fluentbit-logs" # Optional
+    aws_for_fluentbit_cwlog_retention_in_days = 90
+    create_namespace                          = true
+    values = [templatefile("${path.module}/k8s_addons/aws-for-fluentbit-values.yaml", {
+      region                          = data.aws_region.current.name,
+      aws_for_fluent_bit_cw_log_group = "/${local.cluster_name}/worker-fluentbit-logs"
+    })]
+    set = [
+      {
+        name  = "nodeSelector.kubernetes\\.io/os"
+        value = "linux"
+      }
+    ]
+  }
+}
 
