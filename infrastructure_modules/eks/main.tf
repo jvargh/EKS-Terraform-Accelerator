@@ -20,7 +20,7 @@
 # LABELING EKS RESOURCES
 # ---------------------------------------------------------------------------------------------------------------------
 module "eks_tags" {
-  source      = "../../base_modules/eks/modules/aws-resource-tags"
+  source      = "./eks-addons/aws-resource-tags"
   tenant      = var.tenant
   environment = var.environment
   zone        = var.zone
@@ -37,10 +37,10 @@ resource "aws_kms_key" "eks" {
 }
 
 module "aws_eks" {
-  source = "../../base_modules/eks/modules/aws-eks"
+  source = "../../base_modules/aws-eks"
   # source  = "terraform-aws-modules/eks/aws"
   # version = "v17.20.0"
-
+  
   create_eks      = var.create_eks
   manage_aws_auth = false
 
@@ -49,8 +49,7 @@ module "aws_eks" {
 
   # NETWORK CONFIG
   vpc_id = var.vpc_id
-  # subnets = var.private_subnet_ids
-  subnets = var.public_subnet_ids
+  subnets = var.private_subnet_ids
 
   cluster_endpoint_private_access = var.cluster_endpoint_private_access
   cluster_endpoint_public_access  = var.cluster_endpoint_public_access

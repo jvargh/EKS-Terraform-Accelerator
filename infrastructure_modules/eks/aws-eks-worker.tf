@@ -22,7 +22,7 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 module "aws_eks_managed_node_groups" {
-  source = "../../base_modules/eks/modules/aws-eks-managed-node-groups"
+  source = "./eks-addons/aws-eks-managed-node-groups"
 
   for_each = { for key, value in var.managed_node_groups : key => value
     if var.enable_managed_nodegroups && length(var.managed_node_groups) > 0
@@ -56,7 +56,7 @@ module "aws_eks_addon" {
   # count = var.create_eks && var.enable_managed_nodegroups || var.create_eks && var.enable_self_managed_nodegroups || var.create_eks && var.enable_fargate ? 1 : 0
   count = var.create_eks && var.enable_managed_nodegroups || var.create_eks && var.enable_self_managed_nodegroups ? 1 : 0
 
-  source                = "../../base_modules/eks/modules/aws-eks-addon"
+  source                = "./eks-addons/aws-eks-core-addons"
   cluster_name          = module.aws_eks.cluster_id
   enable_vpc_cni_addon  = var.enable_vpc_cni_addon
   vpc_cni_addon_version = var.vpc_cni_addon_version
