@@ -97,6 +97,7 @@ terraform destroy
 
 ## Authentication and Authorization 
 #### Step 1a: Verify IAM roles specified in map_roles local var are added to aws-auth configmap
+```shell
 > kubectl describe cm aws-auth -n kube-system
 mapRoles:
 ----
@@ -108,9 +109,11 @@ mapRoles:
   - "eks-developer"
   "rolearn": "arn:aws:iam::<account_id>:role/eks-developer"
   "username": "eks-developer"
+```
 
 #### Step 1b: Verify ClusterRoleBinding creates Group=eks-developer
 Run clusterrolebinding_eks_developer.yml to associate ClusterRole=view with newly created Group
+```shell
 > kubectl describe clusterrolebinding -name eks-developer
 Role:
   Kind:  ClusterRole
@@ -132,6 +135,7 @@ Subjects:
         }
     ]
 }
+```
 
 #### Step 3: Create IAM Role eks-developer which contains permissions (S3 Read access)
 From IAM create role 'eks-developer' that matches aws-auth. Assign policies that provide AWS permissions as e.g. AmazonS3ReadOnlyAccess
@@ -142,6 +146,7 @@ Due to policy, user should be able to assume role 'eks-developer'
 
 #### Step 5: Add IAM user eks-developer1 details to .aws/config and .aws/credentials
 Add below to config
+```shell
 [eks-admin]
 region = us-east-1
 [profile eks-developer]
@@ -150,12 +155,15 @@ Add below to credentials
 [eks-developer1]
 aws_access_key_id=<access_key_from_console>
 aws_secret_access_key=<secret_key_from_console>
+```
 
 #### Step 6: Test permission for eks-developer1
 Run below. First activate user profile through export. Viewing cmds should work but not admin cmds
+```shell
 > export AWS_PROFILE=eks-developer
 > kubectl get all  
 <works with expected output>
 > kubectl describe clusterrolebinding -name eks-developer
 Error from server (Forbidden): clusterrolebindings.rbac.authorization.k8s.io "eks-developer" is forbidden: User "eks-developer" cannot get resource "clusterrolebindings" in API group "rbac.authorization.k8s.io" at the cluster scope
+```
 
