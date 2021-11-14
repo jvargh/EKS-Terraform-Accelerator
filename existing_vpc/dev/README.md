@@ -95,7 +95,7 @@ cd deploy/existing_vpc/
 terraform destroy
 ```
 
-## Authentication and Authorization 
+# Authentication and Authorization 
 #### Step 1a: Verify IAM roles specified in map_roles local var are added to aws-auth configmap
 ```shell
 > kubectl describe cm aws-auth -n kube-system
