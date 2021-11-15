@@ -104,7 +104,7 @@ terraform destroy
 From IAM create role 'eks-developer' that matches role used in aws-auth.
 Assign policies that provide AWS permissions as e.g. AmazonS3ReadOnlyAccess.
 Trusted entity is the AWS account.
-![](image/README/1637007225245.png)
+<kbd>![](image/README/1637007225245.png)
 
 #### Step 2: Create IAM Policy EKSDeveloperRoleAssumeRolePolicy so IAM users can assume Developer role
 From IAM Policy create this policy that can assume role 'eks-developer'
@@ -121,12 +121,12 @@ From IAM Policy create this policy that can assume role 'eks-developer'
     ]
 }
 ```
-![](image/README/1637007404448.png)
+<kbd>![](image/README/1637007404448.png)
 
 #### Step 3: Create IAM user eks-developer1 and attach EKSDeveloperRoleAssumeRolePolicy IAM policy
 From IAM create user 'eks-developer1'. Attach IAM policy EKSDeveloperRoleAssumeRolePolicy.
 Due to policy, user should be able to assume role 'eks-developer'
-![](image/README/1637007528111.png)
+<kbd>![](image/README/1637007528111.png)
 
 #### Step 4: Verify IAM roles specified in map_roles local var are added to aws-auth configmap
 ```shell
