@@ -73,30 +73,62 @@ to create resources
 create_vpc_endpoints=true (with terraform apply), following which enable_managed_nodegroups=true (with terraform apply)
 ```
 
-
 ### Configure kubectl and test cluster
 
 EKS Cluster details can be extracted from terraform output or from AWS Console to get the name of cluster. This following command used to update the `kubeconfig` in your local machine where you run kubectl commands to interact with your EKS Cluster.
 
 #### Step5: Run update-kubeconfig command.
+
 `~/.kube/config` file gets updated with cluster details and certificate from the below command
 
 $ aws eks --region us-east-1 update-kubeconfig --name `<cluster-name>`
 
 #### Step6: List all the worker nodes by running the command below
+
 $ kubectl get nodes
 
 #### Step7: List all the pods running in kube-system namespace
+
 $ kubectl get pods -n kube-system
 
 # How to Destroy
+
 ```shell
 cd deploy/existing_vpc/
 terraform destroy
 ```
 
-# Authentication and Authorization 
-#### Step 1a: Verify IAM roles specified in map_roles local var are added to aws-auth configmap
+# Authentication and Authorization
+
+#### Step 1: Create IAM Role eks-developer which contains some or no permissions (e.g. S3 Read access)
+From IAM create role 'eks-developer' that matches role used in aws-auth.
+Assign policies that provide AWS permissions as e.g. AmazonS3ReadOnlyAccess.
+Trusted entity is the AWS account.
+![](image/README/1637007225245.png)
+
+#### Step 2: Create IAM Policy EKSDeveloperRoleAssumeRolePolicy so IAM users can assume Developer role
+From IAM Policy create this policy that can assume role 'eks-developer'
+```shell
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": "sts:AssumeRole",
+            "Resource": "arn:aws:iam::xxx:role/eks-developer"
+        }
+    ]
+}
+```
+![](image/README/1637007404448.png)
+
+#### Step 3: Create IAM user eks-developer1 and attach EKSDeveloperRoleAssumeRolePolicy IAM policy
+From IAM create user 'eks-developer1'. Attach IAM policy EKSDeveloperRoleAssumeRolePolicy.
+Due to policy, user should be able to assume role 'eks-developer'
+![](image/README/1637007528111.png)
+
+#### Step 4: Verify IAM roles specified in map_roles local var are added to aws-auth configmap
 ```shell
 > kubectl describe cm aws-auth -n kube-system
 mapRoles:
@@ -111,7 +143,7 @@ mapRoles:
   "username": "eks-developer"
 ```
 
-#### Step 1b: Verify ClusterRoleBinding creates Group=eks-developer
+#### Step 5: Verify ClusterRoleBinding creates Group=eks-developer
 Run clusterrolebinding_eks_developer.yml to associate ClusterRole=view with newly created Group
 ```shell
 > kubectl describe clusterrolebinding -name eks-developer
@@ -122,29 +154,9 @@ Subjects:
   Kind   Name           Namespace
   ----   ----           ---------
   Group  eks-developer  
-
-#### Step 2: Create EKSDeveloperRoleAssumeRolePolicy so IAM users can assume Developer role
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "VisualEditor0",
-            "Effect": "Allow",
-            "Action": "sts:AssumeRole",
-            "Resource": "arn:aws:iam::xxx:role/eks-developer"
-        }
-    ]
-}
 ```
 
-#### Step 3: Create IAM Role eks-developer which contains permissions (S3 Read access)
-From IAM create role 'eks-developer' that matches aws-auth. Assign policies that provide AWS permissions as e.g. AmazonS3ReadOnlyAccess
-
-#### Step 4: Create IAM user eks-developer1 and attach EKSDeveloperRoleAssumeRolePolicy IAM policy 
-From IAM create user 'eks-developer1'. Attach IAM policy EKSDeveloperRoleAssumeRolePolicy.
-Due to policy, user should be able to assume role 'eks-developer'
-
-#### Step 5: Add IAM user eks-developer1 details to .aws/config and .aws/credentials
+#### Step 6: Add IAM user eks-developer1 details to .aws/config and .aws/credentials
 Add below to config
 ```shell
 [eks-admin]
@@ -157,7 +169,7 @@ aws_access_key_id=<access_key_from_console>
 aws_secret_access_key=<secret_key_from_console>
 ```
 
-#### Step 6: Test permission for eks-developer1
+#### Step 7: Test permission for eks-developer1
 Run below. First activate user profile through export. Viewing cmds should work but not admin cmds
 ```shell
 > export AWS_PROFILE=eks-developer
@@ -166,4 +178,3 @@ Run below. First activate user profile through export. Viewing cmds should work 
 > kubectl describe clusterrolebinding -name eks-developer
 Error from server (Forbidden): clusterrolebindings.rbac.authorization.k8s.io "eks-developer" is forbidden: User "eks-developer" cannot get resource "clusterrolebindings" in API group "rbac.authorization.k8s.io" at the cluster scope
 ```
-
