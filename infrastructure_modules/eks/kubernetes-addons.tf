@@ -17,11 +17,8 @@
 #  */
 
 module "fluent-bit-for-splunk" {
-  count                        = var.create_eks && var.fluentbit_for_splunk_enable ? 1 : 0
-  source                       = "./kubernetes-addons/fluentbit-for-splunk"
-  # aws_for_fluentbit_helm_chart = var.aws_for_fluentbit_helm_chart
-  eks_cluster_id               = module.aws_eks.cluster_id
-
+  count      = var.create_eks && var.fluentbit_for_splunk_enable ? 1 : 0
+  source     = "./kubernetes-addons/fluentbit-for-splunk"
   depends_on = [module.aws_eks]
 }
 

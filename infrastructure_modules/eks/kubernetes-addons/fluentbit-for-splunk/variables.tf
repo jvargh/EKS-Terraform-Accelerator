@@ -21,9 +21,3 @@ variable "aws_for_fluentbit_helm_chart" {
   description = "Helm chart definition for aws_for_fluent_bit."
   default     = {}
 }
-
-
-variable "eks_cluster_id" {
-  type        = string
-  description = "EKS cluster Id"
-}

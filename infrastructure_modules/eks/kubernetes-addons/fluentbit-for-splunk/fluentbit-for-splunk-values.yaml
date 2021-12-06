@@ -1,7 +1,7 @@
 image:
   repository: fluent/fluent-bit
   tag: ""
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 testFramework: {}
 imagePullSecrets: []
@@ -36,10 +36,10 @@ serviceMonitor:
 prometheusRule:
   enabled: false
 
-dashboards:
-  enabled: false
-  labelKey: grafana_dashboard
-  annotations: {}
+dashboards: {}
+  # enabled: false
+  # labelKey: grafana_dashboard
+  # annotations: {}
 
 lifecycle: {}
 
@@ -149,21 +149,6 @@ config:
         splunk_token f9bd5bdb-c0b2-4a83-bcff-9625e5e908db 
         tls off
         tls.verify off
-
-    # [OUTPUT]
-    #     Name es
-    #     Match kube.*
-    #     Host elasticsearch-master
-    #     Logstash_Format On
-    #     Retry_Limit False
-
-    # [OUTPUT]
-    #     Name es
-    #     Match host.*
-    #     Host elasticsearch-master
-    #     Logstash_Format On
-    #     Logstash_Prefix node
-    #     Retry_Limit False
 
   ## https://docs.fluentbit.io/manual/pipeline/parsers
   customParsers: |

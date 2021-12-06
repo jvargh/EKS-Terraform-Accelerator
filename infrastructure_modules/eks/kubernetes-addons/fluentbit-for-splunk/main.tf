@@ -75,6 +75,4 @@ resource "helm_release" "aws_for_fluent_bit" {
       value = each_item.value.value
     }
   }
-
-  # depends_on = [aws_cloudwatch_log_group.eks_worker_logs]
 }
