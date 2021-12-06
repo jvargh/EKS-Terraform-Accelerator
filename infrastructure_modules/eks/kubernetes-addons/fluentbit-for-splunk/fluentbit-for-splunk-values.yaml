@@ -33,13 +33,7 @@ service:
 serviceMonitor:
   enabled: false
 
-prometheusRule:
-  enabled: false
-
 dashboards: {}
-  # enabled: false
-  # labelKey: grafana_dashboard
-  # annotations: {}
 
 lifecycle: {}
 
@@ -143,8 +137,8 @@ config:
     [OUTPUT]
         name splunk 
         match *
-        host 44.200.215.184
-        port 80
+        host <HOST>
+        port 8088
         splunk_send_raw on
         splunk_token f9bd5bdb-c0b2-4a83-bcff-9625e5e908db 
         tls off
