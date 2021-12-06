@@ -37,7 +37,8 @@ resource "aws_kms_key" "eks" {
 }
 
 module "aws_eks" {
-  source = "../../base_modules/aws-eks"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-eks"
+  # source = "../../base_modules/aws-eks"
   # source  = "terraform-aws-modules/eks/aws"
   # version = "v17.20.0"
   

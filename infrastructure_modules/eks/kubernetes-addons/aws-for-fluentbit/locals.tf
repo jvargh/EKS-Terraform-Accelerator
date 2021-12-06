@@ -52,7 +52,5 @@ locals {
 
 
   }
-  aws_for_fluentbit_helm_app = merge(
-    local.default_aws_for_fluentbit_helm_app,
-  var.aws_for_fluentbit_helm_chart)
+  aws_for_fluentbit_helm_app = merge(local.default_aws_for_fluentbit_helm_app, var.aws_for_fluentbit_helm_chart)
 }
