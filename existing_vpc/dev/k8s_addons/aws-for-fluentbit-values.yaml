@@ -53,7 +53,7 @@ filter:
 #       Exclude log lvl=debug*
 
 cloudWatch:
-  enabled: true
+  enabled: false
   match: "*"
   region: ${region}
   logGroupName: ${aws_for_fluent_bit_cw_log_group}
