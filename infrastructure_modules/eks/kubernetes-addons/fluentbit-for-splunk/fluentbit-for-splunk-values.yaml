@@ -137,7 +137,7 @@ config:
     [OUTPUT]
         name splunk 
         match *
-        host <HOST>
+        host 1.1.1.1
         port 8088
         splunk_send_raw on
         splunk_token f9bd5bdb-c0b2-4a83-bcff-9625e5e908db 
