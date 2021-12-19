@@ -16,7 +16,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-resource "kubernetes_namespace_v1" "irsa" {
+# resource "kubernetes_namespace_v1" "irsa" {
+resource "kubernetes_namespace" "irsa" {
   count = var.create_kubernetes_namespace ? 1 : 0
   metadata {
     name = var.kubernetes_namespace
@@ -27,7 +28,8 @@ resource "kubernetes_namespace_v1" "irsa" {
   }
 }
 
-resource "kubernetes_service_account_v1" "irsa" {
+# resource "kubernetes_service_account_v1" "irsa" {
+resource "kubernetes_service_account" "irsa" {
   count = var.create_kubernetes_service_account ? 1 : 0
   metadata {
     name        = var.kubernetes_service_account
