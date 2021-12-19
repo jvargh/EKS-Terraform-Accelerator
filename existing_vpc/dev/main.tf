@@ -4,14 +4,17 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 3.60.0"
+      # version = ">= 3.66.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
       version = "~> 2.5.0"
+      # version = ">= 2.7.1"
     }
     helm = {
       source  = "hashicorp/helm"
       version = "~> 2.3.0"
+      # version = ">= 2.4.1"
     }
   }
 }
@@ -133,6 +136,12 @@ module "aws-eks-accelerator-for-terraform" {
   # EKS CONTROL PLANE VARIABLES
   create_eks         = local.create_eks
   kubernetes_version = local.kubernetes_version
+
+  # EKS Managed Add-ons
+  enable_eks_addon_vpc_cni            = true
+  enable_eks_addon_coredns            = true
+  enable_eks_addon_kube_proxy         = true
+  enable_eks_addon_aws_ebs_csi_driver = true
 
   #---------------------------------------------------------#
   # EKS WORKER NODE GROUPS
