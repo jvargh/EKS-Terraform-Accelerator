@@ -159,6 +159,12 @@ variable "enable_eks_addon_aws_ebs_csi_driver" {
   description = "Enable EKS Managed EBS CSI Driver Addon"
 }
 
+variable "enable_s3_irsa" {
+  type        = bool
+  default     = false
+  description = "Enable S3 access via IRSA"
+}
+
 #----------------------------------------------------------
 # EKS WORKER NODES
 #----------------------------------------------------------

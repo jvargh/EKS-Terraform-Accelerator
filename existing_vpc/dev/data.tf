@@ -41,6 +41,6 @@ locals {
   # Setting all to false should remove but if issue with auth remval, run below to remove this module and t apply again 
   #     t state rm module.aws-eks-accelerator-for-terraform.kubernetes_config_map.aws_auth[0]
   create_eks                = true
-  create_vpc_endpoints      = true
+  create_vpc_endpoints      = false
   enable_managed_nodegroups = true
 }

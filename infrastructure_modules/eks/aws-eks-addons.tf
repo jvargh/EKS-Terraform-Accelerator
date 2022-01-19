@@ -55,3 +55,15 @@ module "aws_ebs_csi_driver" {
 
   depends_on = [module.aws_eks]
 }
+
+module "aws_s3_with_irsa" {
+  count          = var.create_eks && var.enable_s3_irsa ? 1 : 0
+  source         = "./eks-addons/s3"
+  add_on_config  = {}
+  cluster_id     = module.aws_eks.cluster_id
+  common_tags    = var.tags
+  s3_bucket_name = "jv-eks-irsa"
+  account_id     = data.aws_caller_identity.current.account_id
+
+  depends_on = [module.aws_eks]
+}

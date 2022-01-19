@@ -41,7 +41,6 @@ module "irsa_addon" {
 }
 
 resource "aws_iam_policy" "aws_ebs_csi_driver" {
-
   description = "IAM Policy for AWS EBS CSI Driver"
   name        = "${var.cluster_id}-${local.add_on_config["addon_name"]}-irsa"
   path        = var.iam_role_path

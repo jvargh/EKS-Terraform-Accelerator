@@ -142,6 +142,7 @@ module "aws-eks-accelerator-for-terraform" {
   enable_eks_addon_coredns            = true
   enable_eks_addon_kube_proxy         = true
   enable_eks_addon_aws_ebs_csi_driver = true
+  enable_s3_irsa                      = true
 
   #---------------------------------------------------------#
   # EKS WORKER NODE GROUPS
