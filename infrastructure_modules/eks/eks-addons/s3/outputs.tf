@@ -23,3 +23,11 @@ output "s3_bucket_name" {
 output "s3_bucket_arn" {
   value = aws_s3_bucket.s3_logs_bucket.arn
 }
+
+output "kubernetes_secret_id" {
+  value = kubernetes_secret.vvp_sa_secret.id
+}
+
+output "kubernetes_secret_data" {
+  value = kubernetes_secret.vvp_sa_secret.data
+}

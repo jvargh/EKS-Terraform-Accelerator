@@ -7,9 +7,8 @@ spec:
   serviceAccountName: s3-irsa-sa
   containers:
   - command:
-    - "/bin/sh"
-    - "-c"
-    - "sleep 3600"
+    - sleep 
+    - "3600"
     image: amazon/aws-cli
     name: aws-cli
     imagePullPolicy: IfNotPresent

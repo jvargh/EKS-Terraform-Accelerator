@@ -12,3 +12,6 @@ local_tf_state/
 .vscode
 .gitallowed
 existing_vpc/dev/splunk-fluentbit/
+pod.yml
+existing_vpc/dev/pod.yml
+existing_vpc/dev/pod.yml

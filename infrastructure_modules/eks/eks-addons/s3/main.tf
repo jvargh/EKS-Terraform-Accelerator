@@ -94,3 +94,15 @@ resource "aws_iam_policy" "aws_s3" {
   path        = var.iam_role_path
   policy      = data.aws_iam_policy_document.aws_s3.json
 }
+
+resource "kubernetes_secret" "vvp_sa_secret" {
+  metadata {
+    name      = local.add_on_config["secret_name"]
+    namespace = local.add_on_config["namespace"]
+    annotations = {
+      "kubernetes.io/service-account.name" = local.add_on_config["service_account"]
+    }
+  }
+  type       = "kubernetes.io/service-account-token"
+  depends_on = [module.irsa_addon]
+}
