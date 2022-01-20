@@ -165,6 +165,11 @@ variable "enable_s3_irsa" {
   description = "Enable S3 access via IRSA"
 }
 
+variable "s3_exists" {
+  type        = bool
+  default     = false
+  description = "Check if S3 bucket exists"
+}
 #----------------------------------------------------------
 # EKS WORKER NODES
 #----------------------------------------------------------

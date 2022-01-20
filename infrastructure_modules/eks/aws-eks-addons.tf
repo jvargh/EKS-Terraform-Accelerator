@@ -62,8 +62,8 @@ module "aws_s3_with_irsa" {
   add_on_config  = {}
   cluster_id     = module.aws_eks.cluster_id
   common_tags    = var.tags
-  s3_bucket_name = "jv-eks-irsa"
+  s3_bucket_name = module.s3bucket == [] ? "" : module.s3bucket.0.s3_bucket_id
   account_id     = data.aws_caller_identity.current.account_id
 
-  depends_on = [module.aws_eks]
+  depends_on = [module.aws_eks, module.s3bucket]
 }
